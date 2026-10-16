@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isPublicCachePath } from '../../src/utils/cachePolicy.js';
 
 // Issue #1403: the service worker must never serve one user's authenticated
 // API responses to the next user on a shared device. This test logs in as A,
@@ -79,12 +80,7 @@ test.describe('authenticated API cache isolation', () => {
     });
 
     // Only allowlisted public endpoints may be cached; authenticated paths must not be.
-    const forbidden = cachedAuthUrls.filter(
-      (path) =>
-        !path.startsWith('/api/v1/products') &&
-        !path.startsWith('/api/v1/categories') &&
-        !path.startsWith('/api/v1/rates')
-    );
+    const forbidden = cachedAuthUrls.filter((path) => !isPublicCachePath(path));
     expect(forbidden).toEqual([]);
   });
 });
