@@ -106,4 +106,4 @@ function parseCookie(cookieStr, name) {
   return null;
 }
 
-module.exports = { csrfProtect, csrfTokenHandler, generateCsrfToken, EXEMPT_SUFFIXES };
+module.exports = { csrfProtect, csrfTokenHandler, generateCsrfToken, EXEMPT_SUFFIXES, parseCookie, stripApiPrefix };

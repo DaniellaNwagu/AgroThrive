@@ -126,6 +126,19 @@ async function storeRefreshToken(userId, rawToken, familyId = null) {
   return family;
 }
 
+async function storeRefreshTokenWithRetry(userId, rawToken, familyId = null) {
+  try {
+    await storeRefreshToken(userId, rawToken, familyId);
+    return rawToken;
+  } catch (error) {
+    const uniqueViolation = error.code === '23505' || error.code === 'SQLITE_CONSTRAINT_UNIQUE' || /unique/i.test(error.message);
+    if (!uniqueViolation) throw error;
+    const replacement = generateRefreshToken();
+    await storeRefreshToken(userId, replacement, familyId);
+    return replacement;
+  }
+}
+
 // Returns { newToken, familyId } on success, { reuse: true, userId, familyId } on replay, null on expired/not-found.
 async function rotateRefreshToken(userId, oldRawToken) {
   const oldHash = hashToken(oldRawToken);
@@ -152,8 +165,8 @@ async function rotateRefreshToken(userId, oldRawToken) {
 
   // Mark old token as used (soft-delete keeps it for reuse detection)
   await db.query('UPDATE refresh_tokens SET used = 1 WHERE id = $1', [existing.id]);
-  const newRawToken = generateRefreshToken();
-  await storeRefreshToken(userId, newRawToken, existing.family_id);
+  let newRawToken = generateRefreshToken();
+  newRawToken = await storeRefreshTokenWithRetry(userId, newRawToken, existing.family_id);
   return { newToken: newRawToken, familyId: existing.family_id };
 }
 
@@ -241,8 +254,8 @@ router.post('/register', registerRateLimit, validate.register, async (req, res) 
       });
     }
     const accessToken = signAccessToken({ id: userId, role });
-    const rawRefresh = generateRefreshToken();
-    await storeRefreshToken(userId, rawRefresh);
+    let rawRefresh = generateRefreshToken();
+    rawRefresh = await storeRefreshTokenWithRetry(userId, rawRefresh);
 
     res.cookie('refreshToken', rawRefresh, COOKIE_OPTIONS);
     res.json({
@@ -302,8 +315,13 @@ router.post('/login', loginRateLimit, validate.login, async (req, res) => {
   if (!valid) return err(res, 401, 'Invalid credentials', 'invalid_credentials');
 
   const accessToken = signAccessToken({ id: user.id, role: user.role });
-  const rawRefresh = generateRefreshToken();
-  await storeRefreshToken(user.id, rawRefresh);
+  let rawRefresh = generateRefreshToken();
+  try {
+    rawRefresh = await storeRefreshTokenWithRetry(user.id, rawRefresh);
+  } catch (error) {
+    logger.error('refresh token storage failed', { userId: user.id, error: error.message });
+    return err(res, 500, 'Could not start session', 'session_store_failed');
+  }
 
   // #836: set the refresh token before rotating the CSRF cookie so the refresh token
   // remains the first Set-Cookie entry in the response and clients can persist it reliably.
@@ -628,8 +646,8 @@ router.post('/recover', validate.recover, async (req, res) => {
   }
 
   const accessToken = signAccessToken({ id: user.id, role: user.role });
-  const rawRefresh = generateRefreshToken();
-  await storeRefreshToken(user.id, rawRefresh);
+  let rawRefresh = generateRefreshToken();
+  rawRefresh = await storeRefreshTokenWithRetry(user.id, rawRefresh);
 
   res.cookie('refreshToken', rawRefresh, COOKIE_OPTIONS);
   res.json({
