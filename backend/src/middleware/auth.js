@@ -10,7 +10,7 @@ module.exports = async (req, res, next) => {
     req.user = jwt.verify(token, process.env.JWT_SECRET, { clockTolerance: 30 });
     // Check if user is still active
     const { rows } = await db.query('SELECT active FROM users WHERE id = $1', [req.user.id]);
-    if (!rows[0] || rows[0].active !== 1) {
+    if (!rows[0] || (rows[0].active !== 1 && rows[0].active !== true)) {
       return err(res, 401, 'Account deactivated', 'deactivated');
     }
     // Defence in depth: authenticated responses must never be stored by
