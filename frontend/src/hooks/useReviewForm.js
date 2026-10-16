@@ -15,11 +15,14 @@ export function useReviewForm(productId, { onSuccess }) {
 
   const loadPaidOrders = useCallback(async () => {
     setOrdersLoadError(false);
+    setReviewOrderId('');
     try {
+      const parsedProductId = Number.parseInt(productId, 10);
+      if (Number.isNaN(parsedProductId) || String(parsedProductId) !== String(productId)) return;
       const res = await api.getOrders({ limit: 100 });
       const orders = (res.data ?? []).filter(
         (o) =>
-          o.product_id === parseInt(productId) &&
+          o.product_id === parsedProductId &&
           ['paid', 'processing', 'shipped', 'delivered', 'completed'].includes(o.status)
       );
       if (orders.length > 0) setReviewOrderId(String(orders[0].id));
