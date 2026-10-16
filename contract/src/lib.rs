@@ -337,7 +337,7 @@ impl EscrowContract {
         }
 
         let now = env.ledger().timestamp();
-        if timeout_unix <= now.saturating_add(MIN_TIMEOUT_SECS) {
+        if timeout_unix < now.saturating_add(MIN_TIMEOUT_SECS) {
             panic!("timeout must be at least 1 hour in the future");
         }
 

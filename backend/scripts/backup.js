@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../src/logger');
 
-async function createBackup() {
+async function createBackup(options = {}) {
   try {
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    const backupsDir = path.join(__dirname, '../backups');
+    const backupsDir = options.backupsDir || path.join(__dirname, '../backups');
     
     // Ensure backups directory exists
     if (!fs.existsSync(backupsDir)) {
@@ -16,7 +16,7 @@ async function createBackup() {
     }
     
     // Determine database file path
-    const dbPath = path.join(__dirname, '../market.db');
+    const dbPath = options.dbPath || path.join(__dirname, '../market.db');
     if (!fs.existsSync(dbPath)) {
       throw new Error(`Database file not found: ${dbPath}`);
     }
@@ -34,6 +34,7 @@ async function createBackup() {
     
     console.log(`Backup created successfully: ${backupFileName}`);
     console.log(`Location: ${backupPath}`);
+    return backupPath;
     
   } catch (error) {
     logger.error('Backup failed:', { error: error.message });

@@ -139,6 +139,31 @@ fn test_deposit_future_timeout_succeeds() {
         .unwrap();
 }
 
+#[test]
+fn test_deposit_exact_minimum_timeout_succeeds() {
+    let env = setup_env();
+    env.mock_all_auths();
+    let client = register_contract(&env);
+    init_zero_fee(&env, &client);
+    let (buyer, farmer) = (Address::generate(&env), Address::generate(&env));
+    let (pname, price) = dummy_product(&env);
+    let timeout = env.ledger().timestamp() + MIN_TIMEOUT_SECS;
+    client.deposit(&30u64, &buyer, &farmer, &1_000_000, &timeout, &pname, &price).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "timeout must be at least 1 hour in the future")]
+fn test_deposit_below_minimum_timeout_panics() {
+    let env = setup_env();
+    env.mock_all_auths();
+    let client = register_contract(&env);
+    init_zero_fee(&env, &client);
+    let (buyer, farmer) = (Address::generate(&env), Address::generate(&env));
+    let (pname, price) = dummy_product(&env);
+    let timeout = env.ledger().timestamp() + MIN_TIMEOUT_SECS - 1;
+    client.deposit(&31u64, &buyer, &farmer, &1_000_000, &timeout, &pname, &price).unwrap();
+}
+
 // ── #471 - events ─────────────────────────────────────────────────────────────
 
 #[test]
