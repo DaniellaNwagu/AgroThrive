@@ -227,3 +227,21 @@ describe('carbon.js — calculateSavingsPercent', () => {
     expect(calculateSavingsPercent(3.33, 10)).toBe(67);
   });
 });
+
+describe('input validation', () => {
+  test('coerces numeric carbon values', () => {
+    expect(estimateCarbonFootprint({ carbon_kg_per_unit: '0.4', category: 'fruits' }, 2))
+      .toEqual(estimateCarbonFootprint({ carbon_kg_per_unit: 0.4, category: 'fruits' }, 2));
+  });
+
+  test('falls back for negative carbon values', () => {
+    const result = estimateCarbonFootprint({ carbon_kg_per_unit: -1, category: 'fruits' }, 2);
+    expect(result.carbonKg).toBe(1);
+    expect(result.savingsPercent).toBeGreaterThanOrEqual(0);
+    expect(result.savingsPercent).toBeLessThanOrEqual(100);
+  });
+
+  test('rejects non-finite coordinates', () => {
+    expect(() => calculateDistance(NaN, 0, 0, 0)).toThrow(TypeError);
+  });
+});

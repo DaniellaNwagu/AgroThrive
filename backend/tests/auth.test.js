@@ -10,6 +10,15 @@ beforeEach(() => {
 const SECRET = process.env.JWT_SECRET || 'test-secret-for-jest';
 const VALID_PASSWORD = 'Secure1pass';
 
+describe('CSRF test helper', () => {
+  it('returns a usable token matching the CSRF cookie', async () => {
+    const { token, cookieStr } = await getCsrf();
+    expect(token).toEqual(expect.any(String));
+    expect(token.length).toBeGreaterThan(0);
+    expect(cookieStr).toContain(`csrf_token=${token}`);
+  });
+});
+
 describe('POST /api/auth/register', () => {
   it('registers a new user, returns access token and sets refresh cookie', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 });

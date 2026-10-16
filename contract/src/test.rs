@@ -71,7 +71,13 @@ fn test_deposit_same_buyer_and_farmer_returns_invalid_parties() {
     let alice = Address::generate(&env);
     let (pname, price) = dummy_product(&env);
     let result = client.try_deposit(
-        &1u64, &alice, &alice, &1_000_000, &future_timeout(&env), &pname, &price,
+        &1u64,
+        &alice,
+        &alice,
+        &1_000_000,
+        &future_timeout(&env),
+        &pname,
+        &price,
     );
     assert_eq!(result, Err(Ok(EscrowError::InvalidParties)));
 }
@@ -86,7 +92,15 @@ fn test_deposit_different_parties_succeeds() {
     let farmer = Address::generate(&env);
     let (pname, price) = dummy_product(&env);
     client
-        .deposit(&1u64, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &1u64,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 }
 
@@ -120,7 +134,9 @@ fn test_deposit_timeout_less_than_one_hour_panics() {
     let (pname, price) = dummy_product(&env);
     let too_soon = env.ledger().timestamp() + 1_800;
     client
-        .deposit(&3u64, &buyer, &farmer, &1_000_000, &too_soon, &pname, &price)
+        .deposit(
+            &3u64, &buyer, &farmer, &1_000_000, &too_soon, &pname, &price,
+        )
         .unwrap();
 }
 
@@ -135,7 +151,15 @@ fn test_deposit_future_timeout_succeeds() {
     let (pname, price) = dummy_product(&env);
     let just_enough = env.ledger().timestamp() + MIN_TIMEOUT_SECS + 1;
     client
-        .deposit(&4u64, &buyer, &farmer, &1_000_000, &just_enough, &pname, &price)
+        .deposit(
+            &4u64,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &just_enough,
+            &pname,
+            &price,
+        )
         .unwrap();
 }
 
@@ -179,7 +203,15 @@ fn test_deposit_emits_event() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &amount, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &amount,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 
     let events = env.events().all();
@@ -211,7 +243,9 @@ fn test_refund_emits_event() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &amount, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &amount, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
     client.refund(&order_id, &None).unwrap();
@@ -244,7 +278,15 @@ fn test_ttl_extended_after_deposit_entry_is_readable() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 
     let record = client.get_escrow(&order_id).unwrap();
@@ -265,7 +307,9 @@ fn test_ttl_extended_after_refund_entry_is_settled_not_evicted() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
     client.refund(&order_id, &None).unwrap();
@@ -349,7 +393,15 @@ fn test_refund_before_timeout_returns_not_timed_out() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     let result = client.try_refund(&order_id, &None);
     assert_eq!(result, Err(Ok(EscrowError::NotTimedOut)));
@@ -367,10 +419,24 @@ fn test_duplicate_deposit_returns_already_exists() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     let result = client.try_deposit(
-        &order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price,
+        &order_id,
+        &buyer,
+        &farmer,
+        &1_000_000,
+        &future_timeout(&env),
+        &pname,
+        &price,
     );
     assert_eq!(result, Err(Ok(EscrowError::AlreadyExists)));
 }
@@ -410,7 +476,15 @@ fn test_open_dispute_by_buyer_transitions_to_disputed() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.open_dispute(&order_id, &buyer, &None).unwrap();
 
@@ -431,7 +505,15 @@ fn test_open_dispute_by_unauthorized_returns_unauthorized() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     let result = client.try_open_dispute(&order_id, &stranger, &None);
     assert_eq!(result, Err(Ok(EscrowError::Unauthorized)));
@@ -454,10 +536,20 @@ fn test_resolve_dispute_to_buyer_by_global_arbitrator() {
     client.grant_role(&platform, &arbitrator, &Role::Arbitrator);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.open_dispute(&order_id, &buyer, &None).unwrap();
-    client.resolve_dispute(&order_id, &arbitrator, &true).unwrap();
+    client
+        .resolve_dispute(&order_id, &arbitrator, &true)
+        .unwrap();
 
     let record = client.get_escrow(&order_id).unwrap();
     assert_eq!(record.status, EscrowStatus::Refunded);
@@ -477,7 +569,15 @@ fn test_resolve_dispute_by_non_arbitrator_returns_unauthorized() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.open_dispute(&order_id, &buyer, &None).unwrap();
 
@@ -500,7 +600,9 @@ fn test_partial_refund_with_valid_amount_succeeds() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
     client.refund(&order_id, &Some(400_000)).unwrap();
@@ -524,13 +626,18 @@ fn test_refund_requires_buyer_authorization() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
     env.mock_auths(&[]);
 
     assert!(client.try_refund(&order_id, &None).is_err());
-    assert_eq!(client.get_escrow(&order_id).unwrap().status, EscrowStatus::Active);
+    assert_eq!(
+        client.get_escrow(&order_id).unwrap().status,
+        EscrowStatus::Active
+    );
 }
 
 #[test]
@@ -546,7 +653,9 @@ fn test_partial_refund_exceeding_amount_returns_invalid_amount() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
     let result = client.try_refund(&order_id, &Some(2_000_000));
@@ -566,6 +675,20 @@ fn test_initialize_with_fee_above_max_returns_invalid_fee_rate() {
     // 501 bps > MAX_FEE_BPS (500)
     let result = client.try_initialize(&admin, &501u32, &fee_dest);
     assert_eq!(result, Err(Ok(EscrowError::InvalidFeeRate)));
+}
+
+#[test]
+fn test_initialize_twice_returns_already_initialized() {
+    let env = setup_env();
+    env.mock_all_auths();
+    let client = register_contract(&env);
+    let admin = Address::generate(&env);
+    let fee_dest = Address::generate(&env);
+    client.initialize(&admin, &0u32, &fee_dest).unwrap();
+    assert_eq!(
+        client.try_initialize(&Address::generate(&env), &0u32, &Address::generate(&env)),
+        Err(Ok(EscrowError::AlreadyInitialized))
+    );
 }
 
 #[test]
@@ -635,7 +758,15 @@ fn test_release_fee_deducted_at_250_bps() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &amount, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &amount,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.release(&order_id, &pname, &price).unwrap();
 
@@ -664,7 +795,15 @@ fn test_release_fee_deducted_at_500_bps() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &amount, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &amount,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.release(&order_id, &pname, &price).unwrap();
 
@@ -691,7 +830,15 @@ fn test_release_zero_fee_farmer_gets_full_amount() {
     let (pname, price) = dummy_product(&env);
 
     client
-        .deposit(&order_id, &buyer, &farmer, &amount, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &amount,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
     client.release(&order_id, &pname, &price).unwrap();
 
@@ -732,7 +879,15 @@ fn test_upgrade_preserves_existing_escrow_state() {
     let order_id: u64 = 500;
     let (pname, price) = dummy_product(&env);
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 
     // Simulate upgrade with a dummy hash (no-op in testutils).
@@ -762,7 +917,13 @@ fn test_pause_blocks_deposit() {
     let farmer = Address::generate(&env);
     let (pname, price) = dummy_product(&env);
     let result = client.try_deposit(
-        &1u64, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price,
+        &1u64,
+        &buyer,
+        &farmer,
+        &1_000_000,
+        &future_timeout(&env),
+        &pname,
+        &price,
     );
     assert_eq!(result, Err(Ok(EscrowError::ContractPaused)));
 }
@@ -781,7 +942,15 @@ fn test_pause_blocks_release() {
     let order_id: u64 = 600;
     let (pname, price) = dummy_product(&env);
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 
     client.pause().unwrap();
@@ -804,7 +973,9 @@ fn test_pause_blocks_refund() {
     let timeout = future_timeout(&env);
     let (pname, price) = dummy_product(&env);
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price)
+        .deposit(
+            &order_id, &buyer, &farmer, &1_000_000, &timeout, &pname, &price,
+        )
         .unwrap();
     advance_past_timeout(&env, timeout);
 
@@ -883,7 +1054,15 @@ fn test_get_escrow_readable_while_paused() {
     let order_id: u64 = 700;
     let (pname, price) = dummy_product(&env);
     client
-        .deposit(&order_id, &buyer, &farmer, &1_000_000, &future_timeout(&env), &pname, &price)
+        .deposit(
+            &order_id,
+            &buyer,
+            &farmer,
+            &1_000_000,
+            &future_timeout(&env),
+            &pname,
+            &price,
+        )
         .unwrap();
 
     client.pause().unwrap();

@@ -40,6 +40,7 @@
     "collectCoverageFrom": [
       "src/**/*.js",
       "!src/__tests__/**",
+      "!src/tests/**",
       "!src/index.js"
     ],
     "coverageDirectory": "coverage",

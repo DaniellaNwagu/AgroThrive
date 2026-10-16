@@ -11,6 +11,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { formatViolationSummary, selectBlockingViolations } from './a11y-helpers';
 
 const ts = Date.now();
 const FARMER_EMAIL = `farmer_a11y_${ts}@test.invalid`;
@@ -18,7 +19,6 @@ const PASS = 'TestPass1!';
 const PRODUCT_NAME = `A11y Beans ${ts}`;
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
-const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
 
 async function expectNoSeriousViolations(page: Page, route: string) {
   // Let data-driven content settle before scanning. `networkidle` is not
@@ -27,11 +27,8 @@ async function expectNoSeriousViolations(page: Page, route: string) {
   await page.waitForTimeout(1_000);
 
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
-  const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ''));
-
-  const summary = blocking
-    .map((v) => `  [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node(s))\n    ${v.helpUrl}`)
-    .join('\n');
+  const blocking = selectBlockingViolations(results);
+  const summary = formatViolationSummary(blocking);
 
   expect(blocking, `Serious/critical a11y violations on ${route}:\n${summary}`).toEqual([]);
 }
@@ -74,6 +71,7 @@ test.describe('Accessibility (axe)', () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const { data: products } = await prodRes.json();
+    expect(Array.isArray(products), 'farmer listings payload must contain a data array').toBe(true);
     const product = (products as any[]).find((p: any) => p.name === PRODUCT_NAME);
     expect(product, 'seeded product must exist in farmer listings').toBeTruthy();
     productId = product.id;
@@ -94,6 +92,7 @@ test.describe('Accessibility (axe)', () => {
   test('product detail page', async ({ page }) => {
     await page.goto(`/product/${productId}`);
     await expect(page.locator(`text=${PRODUCT_NAME}`).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('text=404')).toHaveCount(0);
     await expectNoSeriousViolations(page, '/product/:id');
   });
 

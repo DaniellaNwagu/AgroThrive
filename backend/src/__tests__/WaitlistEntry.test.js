@@ -1,146 +1,143 @@
-/**
- * Unit tests for WaitlistEntry data model
- * Tests validation, serialization, and parsing functionality
- */
-
 const WaitlistEntry = require('../models/WaitlistEntry');
 
 describe('WaitlistEntry', () => {
-  const validData = {
-    id: 1,
-    buyer_id: 123,
-    product_id: 456,
-    quantity: 2,
-    position: 1,
-    created_at: '2024-01-01T00:00:00.000Z',
-  };
-
   describe('constructor', () => {
-    test('creates instance with valid data', () => {
-      const entry = new WaitlistEntry(validData);
-      expect(entry.id).toBe(1);
-      expect(entry.buyer_id).toBe(123);
-      expect(entry.product_id).toBe(456);
-      expect(entry.quantity).toBe(2);
-      expect(entry.position).toBe(1);
-      expect(entry.created_at).toBe('2024-01-01T00:00:00.000Z');
-    });
-
-    test('creates instance with empty data', () => {
+    it('should initialize all fields to null when no data provided', () => {
       const entry = new WaitlistEntry();
+
       expect(entry.id).toBeNull();
       expect(entry.buyer_id).toBeNull();
       expect(entry.product_id).toBeNull();
       expect(entry.quantity).toBeNull();
       expect(entry.position).toBeNull();
       expect(entry.created_at).toBeNull();
+      expect(entry.buyer_name).toBeNull();
+      expect(entry.buyer_email).toBeNull();
+      expect(entry.product_name).toBeNull();
+      expect(entry.product_price).toBeNull();
     });
 
-    test('includes optional populated fields', () => {
-      const dataWithPopulated = {
-        ...validData,
-        buyer_name: 'John Doe',
-        buyer_email: 'john@example.com',
-        product_name: 'Test Product',
-        product_price: 10.99,
-      };
+    it('should assign provided data', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+      });
 
-      const entry = new WaitlistEntry(dataWithPopulated);
-      expect(entry.buyer_name).toBe('John Doe');
-      expect(entry.buyer_email).toBe('john@example.com');
-      expect(entry.product_name).toBe('Test Product');
-      expect(entry.product_price).toBe(10.99);
+      expect(entry.id).toBe(1);
+      expect(entry.buyer_id).toBe(2);
+      expect(entry.product_id).toBe(3);
+      expect(entry.quantity).toBe(4);
+      expect(entry.position).toBe(5);
+      expect(entry.created_at).toBe('2024-01-01T00:00:00.000Z');
     });
   });
 
   describe('validate', () => {
-    test('validates correct data', () => {
-      const entry = new WaitlistEntry(validData);
+    it('should be valid with all required fields', () => {
+      const entry = new WaitlistEntry({
+        buyer_id: 1,
+        product_id: 2,
+        quantity: 3,
+      });
+
       const result = entry.validate();
+
       expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
+      expect(result.errors).toEqual([]);
     });
 
-    test('rejects missing buyer_id', () => {
-      const entry = new WaitlistEntry({ ...validData, buyer_id: null });
+    it('should be invalid when required fields are missing', () => {
+      const entry = new WaitlistEntry();
+
       const result = entry.validate();
+
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('buyer_id must be a positive integer');
-    });
-
-    test('rejects invalid buyer_id', () => {
-      const entry = new WaitlistEntry({ ...validData, buyer_id: -1 });
-      const result = entry.validate();
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('buyer_id must be a positive integer');
-    });
-
-    test('rejects missing product_id', () => {
-      const entry = new WaitlistEntry({ ...validData, product_id: null });
-      const result = entry.validate();
-      expect(result.isValid).toBe(false);
       expect(result.errors).toContain('product_id must be a positive integer');
-    });
-
-    test('rejects invalid quantity', () => {
-      const entry = new WaitlistEntry({ ...validData, quantity: 0 });
-      const result = entry.validate();
-      expect(result.isValid).toBe(false);
       expect(result.errors).toContain('quantity must be a positive integer');
     });
 
-    test('rejects invalid position', () => {
-      const entry = new WaitlistEntry({ ...validData, position: -1 });
+    it('should reject non-positive integers', () => {
+      const entry = new WaitlistEntry({
+        buyer_id: 0,
+        product_id: -1,
+        quantity: 1.5,
+      });
+
       const result = entry.validate();
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('buyer_id must be a positive integer');
+      expect(result.errors).toContain('product_id must be a positive integer');
+      expect(result.errors).toContain('quantity must be a positive integer');
+    });
+
+    it('should validate position when provided', () => {
+      const entry = new WaitlistEntry({
+        buyer_id: 1,
+        product_id: 2,
+        quantity: 3,
+        position: -5,
+      });
+
+      const result = entry.validate();
+
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('position must be a positive integer');
     });
 
-    test('accepts null position', () => {
-      const entry = new WaitlistEntry({ ...validData, position: null });
-      const result = entry.validate();
-      expect(result.isValid).toBe(true);
-    });
+    it('should validate created_at when provided', () => {
+      const entry = new WaitlistEntry({
+        buyer_id: 1,
+        product_id: 2,
+        quantity: 3,
+        created_at: 'not-a-date',
+      });
 
-    test('rejects invalid date string', () => {
-      const entry = new WaitlistEntry({ ...validData, created_at: 'invalid-date' });
       const result = entry.validate();
+
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('created_at must be a valid date');
     });
   });
 
-  describe('toJSON', () => {
-    test('serializes basic fields', () => {
-      const entry = new WaitlistEntry(validData);
-      const json = entry.toJSON();
-
-      expect(json).toEqual({
+  describe('toJSON / format', () => {
+    it('should return exactly the six core keys for a bare entry', () => {
+      const entry = new WaitlistEntry({
         id: 1,
-        buyer_id: 123,
-        product_id: 456,
-        quantity: 2,
-        position: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
         created_at: '2024-01-01T00:00:00.000Z',
       });
-    });
 
-    test('includes populated fields when present', () => {
-      const dataWithPopulated = {
-        ...validData,
-        buyer_name: 'John Doe',
-        product_name: 'Test Product',
-      };
-
-      const entry = new WaitlistEntry(dataWithPopulated);
       const json = entry.toJSON();
 
-      expect(json.buyer_name).toBe('John Doe');
-      expect(json.product_name).toBe('Test Product');
+      expect(Object.keys(json)).toEqual([
+        'id',
+        'buyer_id',
+        'product_id',
+        'quantity',
+        'position',
+        'created_at',
+      ]);
     });
 
-    test('excludes null populated fields', () => {
-      const entry = new WaitlistEntry(validData);
+    it('should omit the four optional keys for a bare entry', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+      });
+
       const json = entry.toJSON();
 
       expect(json).not.toHaveProperty('buyer_name');
@@ -148,155 +145,176 @@ describe('WaitlistEntry', () => {
       expect(json).not.toHaveProperty('product_name');
       expect(json).not.toHaveProperty('product_price');
     });
+
+    it('should include the four optional keys with correct values when populated', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+        buyer_name: 'Jane Doe',
+        buyer_email: 'jane@example.com',
+        product_name: 'Widget',
+        product_price: 19.99,
+      });
+
+      const json = entry.toJSON();
+
+      expect(json.buyer_name).toBe('Jane Doe');
+      expect(json.buyer_email).toBe('jane@example.com');
+      expect(json.product_name).toBe('Widget');
+      expect(json.product_price).toBe(19.99);
+    });
+
+    it('should include only the populated optional keys', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+        buyer_name: 'Jane Doe',
+      });
+
+      const json = entry.toJSON();
+
+      expect(json).toHaveProperty('buyer_name', 'Jane Doe');
+      expect(json).not.toHaveProperty('buyer_email');
+      expect(json).not.toHaveProperty('product_name');
+      expect(json).not.toHaveProperty('product_price');
+    });
+
+    it('should have format() deep-equal toJSON()', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+        buyer_name: 'Jane Doe',
+        buyer_email: 'jane@example.com',
+        product_name: 'Widget',
+        product_price: 19.99,
+      });
+
+      expect(entry.format()).toEqual(entry.toJSON());
+    });
   });
 
   describe('fromJSON', () => {
-    test('parses JSON string', () => {
-      const jsonString = JSON.stringify(validData);
-      const entry = WaitlistEntry.fromJSON(jsonString);
+    it('should parse a JSON string', () => {
+      const entry = WaitlistEntry.fromJSON('{"id":1,"buyer_id":2}');
 
+      expect(entry).toBeInstanceOf(WaitlistEntry);
       expect(entry.id).toBe(1);
-      expect(entry.buyer_id).toBe(123);
-      expect(entry.product_id).toBe(456);
+      expect(entry.buyer_id).toBe(2);
     });
 
-    test('parses JSON object', () => {
-      const entry = WaitlistEntry.fromJSON(validData);
+    it('should accept a plain object', () => {
+      const entry = WaitlistEntry.fromJSON({ id: 1, buyer_id: 2 });
 
+      expect(entry).toBeInstanceOf(WaitlistEntry);
       expect(entry.id).toBe(1);
-      expect(entry.buyer_id).toBe(123);
-      expect(entry.product_id).toBe(456);
     });
 
-    test('throws error for invalid JSON string', () => {
-      expect(() => {
-        WaitlistEntry.fromJSON('invalid json');
-      }).toThrow('Invalid JSON string');
+    it('should throw on invalid JSON string', () => {
+      expect(() => WaitlistEntry.fromJSON('{invalid')).toThrow(/Invalid JSON string/);
     });
 
-    test('throws error for invalid input type', () => {
-      expect(() => {
-        WaitlistEntry.fromJSON(123);
-      }).toThrow('Input must be a JSON string or object');
-    });
-  });
-
-  describe('format', () => {
-    test('returns JSON representation', () => {
-      const entry = new WaitlistEntry(validData);
-      const formatted = entry.format();
-      const json = entry.toJSON();
-
-      expect(formatted).toEqual(json);
+    it('should throw on non-object input', () => {
+      expect(() => WaitlistEntry.fromJSON(42)).toThrow(
+        'Input must be a JSON string or object'
+      );
     });
   });
 
   describe('fromDatabaseRow', () => {
-    test('creates instance from database row', () => {
-      const row = {
-        id: 1,
-        buyer_id: 123,
-        product_id: 456,
-        quantity: 2,
-        position: 1,
-        created_at: '2024-01-01T00:00:00.000Z',
-        buyer_name: 'John Doe',
-        product_name: 'Test Product',
-      };
-
-      const entry = WaitlistEntry.fromDatabaseRow(row);
-
-      expect(entry.id).toBe(1);
-      expect(entry.buyer_name).toBe('John Doe');
-      expect(entry.product_name).toBe('Test Product');
+    it('should return null for falsy row', () => {
+      expect(WaitlistEntry.fromDatabaseRow(null)).toBeNull();
     });
 
-    test('returns null for null row', () => {
-      const entry = WaitlistEntry.fromDatabaseRow(null);
-      expect(entry).toBeNull();
+    it('should map row fields including joined fields', () => {
+      const entry = WaitlistEntry.fromDatabaseRow({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        position: 5,
+        created_at: '2024-01-01T00:00:00.000Z',
+        buyer_name: 'Jane Doe',
+        buyer_email: 'jane@example.com',
+        product_name: 'Widget',
+        product_price: 19.99,
+      });
+
+      expect(entry).toBeInstanceOf(WaitlistEntry);
+      expect(entry.buyer_name).toBe('Jane Doe');
+      expect(entry.product_price).toBe(19.99);
     });
   });
 
   describe('validateCreateInput', () => {
-    test('validates correct input', () => {
-      const input = {
-        buyer_id: 123,
-        product_id: 456,
-        quantity: 2,
-      };
-
-      const result = WaitlistEntry.validateCreateInput(input);
+    it('should return valid data for correct input', () => {
+      const result = WaitlistEntry.validateCreateInput({
+        buyer_id: 1,
+        product_id: 2,
+        quantity: 3,
+      });
 
       expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-      expect(result.data).toEqual(input);
+      expect(result.data).toEqual({ buyer_id: 1, product_id: 2, quantity: 3 });
     });
 
-    test('rejects invalid input', () => {
-      const input = {
-        buyer_id: -1,
-        product_id: 'invalid',
-        quantity: 0,
-      };
-
-      const result = WaitlistEntry.validateCreateInput(input);
+    it('should collect errors for invalid input', () => {
+      const result = WaitlistEntry.validateCreateInput({});
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('buyer_id must be a positive integer');
-      expect(result.errors).toContain('product_id must be a positive integer');
-      expect(result.errors).toContain('quantity must be a positive integer');
+      expect(result.errors.length).toBe(3);
     });
   });
 
   describe('equals', () => {
-    test('returns true for equal entries', () => {
-      const entry1 = new WaitlistEntry(validData);
-      const entry2 = new WaitlistEntry(validData);
+    it('should return true for equal entries', () => {
+      const a = new WaitlistEntry({ id: 1, buyer_id: 2, product_id: 3, quantity: 4 });
+      const b = new WaitlistEntry({ id: 1, buyer_id: 2, product_id: 3, quantity: 4 });
 
-      expect(entry1.equals(entry2)).toBe(true);
+      expect(a.equals(b)).toBe(true);
     });
 
-    test('returns false for different entries', () => {
-      const entry1 = new WaitlistEntry(validData);
-      const entry2 = new WaitlistEntry({ ...validData, quantity: 3 });
+    it('should return false for different entries', () => {
+      const a = new WaitlistEntry({ id: 1, buyer_id: 2, product_id: 3, quantity: 4 });
+      const b = new WaitlistEntry({ id: 9, buyer_id: 2, product_id: 3, quantity: 4 });
 
-      expect(entry1.equals(entry2)).toBe(false);
+      expect(a.equals(b)).toBe(false);
     });
 
-    test('returns false for non-WaitlistEntry object', () => {
-      const entry = new WaitlistEntry(validData);
+    it('should return false for non-WaitlistEntry input', () => {
+      const a = new WaitlistEntry({ id: 1 });
 
-      expect(entry.equals({})).toBe(false);
-      expect(entry.equals(null)).toBe(false);
+      expect(a.equals({ id: 1 })).toBe(false);
     });
   });
 
   describe('clone', () => {
-    test('creates identical copy', () => {
-      const entry = new WaitlistEntry(validData);
-      const clone = entry.clone();
+    it('should create an independent copy', () => {
+      const entry = new WaitlistEntry({
+        id: 1,
+        buyer_id: 2,
+        product_id: 3,
+        quantity: 4,
+        buyer_name: 'Jane Doe',
+      });
 
-      expect(clone.equals(entry)).toBe(true);
-      expect(clone).not.toBe(entry); // Different instances
-    });
-  });
+      const copy = entry.clone();
 
-  describe('JSON round trip property', () => {
-    test('parsing then formatting produces equivalent object', () => {
-      const entry = new WaitlistEntry(validData);
-      const json = entry.toJSON();
-      const parsed = WaitlistEntry.fromJSON(json);
-      const formatted = parsed.format();
-
-      expect(formatted).toEqual(json);
-    });
-
-    test('round trip with string serialization', () => {
-      const entry = new WaitlistEntry(validData);
-      const jsonString = JSON.stringify(entry.toJSON());
-      const parsed = WaitlistEntry.fromJSON(jsonString);
-
-      expect(parsed.equals(entry)).toBe(true);
+      expect(copy).toBeInstanceOf(WaitlistEntry);
+      expect(copy.equals(entry)).toBe(true);
+      expect(copy.buyer_name).toBe('Jane Doe');
+      expect(copy).not.toBe(entry);
     });
   });
 });

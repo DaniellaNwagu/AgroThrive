@@ -40,10 +40,21 @@ export function ThemeProvider({ children }) {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
+  const setSystemTheme = useCallback((enabled) => {
+    if (enabled) {
+      window.localStorage.removeItem('theme');
+      setUseSystemTheme(true);
+      setTheme(window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    } else {
+      setUseSystemTheme(false);
+      window.localStorage.setItem('theme', theme);
+    }
+  }, [theme]);
+
   const isUsingSystemTheme = useSystemTheme;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, useSystemTheme, isUsingSystemTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setSystemTheme, isUsingSystemTheme }}>
       {children}
     </ThemeContext.Provider>
   );

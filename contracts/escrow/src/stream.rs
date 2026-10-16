@@ -591,6 +591,15 @@ mod tests {
         assert_eq!(s.last_checkpoint_at, 30);
     }
 
+    #[test]
+    fn checkpoint_clamps_time_to_stream_end() {
+        let env = Env::default();
+        let stream = make_stream(&env, 10, 1_000, 0, 50);
+        let stream = checkpoint(stream, 200);
+        assert_eq!(stream.accrued_at_checkpoint, 500);
+        assert_eq!(stream.last_checkpoint_at, 50);
+    }
+
     // ── decrease_rate_per_second (pure logic via compute_surplus) ─────────────
 
     #[test]

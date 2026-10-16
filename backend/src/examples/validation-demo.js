@@ -1,6 +1,10 @@
 /**
  * Demonstration of enhanced validation logic in WaitlistService
  * This script shows the comprehensive validation added in task 2.4
+ *
+ * The scenario matrix below is also expressed as real Jest assertions so
+ * that a renamed error code or reordered branch fails the suite instead of
+ * only printing FAILED.
  */
 
 const WaitlistService = require('../services/WaitlistService');
@@ -13,6 +17,62 @@ const mockDb = {
 // Replace the real db with mock for demo
 jest.mock('../db/schema', () => mockDb);
 
+// Input-validation cases: each must be rejected by joinWaitlist.
+const invalidInputs = [
+  { buyerId: null, productId: 1, quantity: 2, description: 'null buyerId' },
+  { buyerId: -1, productId: 1, quantity: 2, description: 'negative buyerId' },
+  { buyerId: 123, productId: null, quantity: 2, description: 'null productId' },
+  { buyerId: 123, productId: 1, quantity: 1001, description: 'excessive quantity' },
+  { buyerId: 123, productId: 1, quantity: 0, description: 'zero quantity' },
+];
+
+// Business-logic scenarios: each maps a mockResolvedValueOnce chain to the
+// error code WaitlistService is expected to return.
+const scenarios = [
+  {
+    name: 'Buyer not found',
+    mocks: [
+      { rows: [] }, // No buyer found
+    ],
+    expected: 'BUYER_NOT_FOUND',
+  },
+  {
+    name: 'Inactive buyer account',
+    mocks: [{ rows: [{ id: 123, role: 'buyer', is_active: false }] }],
+    expected: 'ACCOUNT_INACTIVE',
+  },
+  {
+    name: 'Non-buyer user role',
+    mocks: [{ rows: [{ id: 123, role: 'farmer', is_active: true }] }],
+    expected: 'INVALID_ROLE',
+  },
+  {
+    name: 'Product not found',
+    mocks: [
+      { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
+      { rows: [] }, // No product found
+    ],
+    expected: 'PRODUCT_NOT_FOUND',
+  },
+  {
+    name: 'Product in stock',
+    mocks: [
+      { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
+      { rows: [{ id: 1, name: 'Test Product', quantity: 5, is_active: true }] }, // In stock
+    ],
+    expected: 'PRODUCT_IN_STOCK',
+  },
+  {
+    name: 'Duplicate entry',
+    mocks: [
+      { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
+      { rows: [{ id: 1, name: 'Test Product', quantity: 0, is_active: true }] }, // Valid product
+      { rows: [{ id: 1, position: 3, created_at: '2024-01-01T00:00:00.000Z' }] }, // Existing entry
+    ],
+    expected: 'DUPLICATE_ENTRY',
+  },
+];
+
 async function demonstrateValidation() {
   const service = new WaitlistService();
 
@@ -20,14 +80,6 @@ async function demonstrateValidation() {
 
   // Test 1: Input validation
   console.log('1. Testing input validation:');
-
-  const invalidInputs = [
-    { buyerId: null, productId: 1, quantity: 2, description: 'null buyerId' },
-    { buyerId: -1, productId: 1, quantity: 2, description: 'negative buyerId' },
-    { buyerId: 123, productId: null, quantity: 2, description: 'null productId' },
-    { buyerId: 123, productId: 1, quantity: 1001, description: 'excessive quantity' },
-    { buyerId: 123, productId: 1, quantity: 0, description: 'zero quantity' },
-  ];
 
   for (const input of invalidInputs) {
     const result = await service.joinWaitlist(input.buyerId, input.productId, input.quantity);
@@ -37,52 +89,6 @@ async function demonstrateValidation() {
   }
 
   console.log('\n2. Testing business logic validation:');
-
-  // Mock scenarios for business logic validation
-  const scenarios = [
-    {
-      name: 'Buyer not found',
-      mocks: [
-        { rows: [] }, // No buyer found
-      ],
-      expected: 'BUYER_NOT_FOUND',
-    },
-    {
-      name: 'Inactive buyer account',
-      mocks: [{ rows: [{ id: 123, role: 'buyer', is_active: false }] }],
-      expected: 'ACCOUNT_INACTIVE',
-    },
-    {
-      name: 'Non-buyer user role',
-      mocks: [{ rows: [{ id: 123, role: 'farmer', is_active: true }] }],
-      expected: 'INVALID_ROLE',
-    },
-    {
-      name: 'Product not found',
-      mocks: [
-        { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
-        { rows: [] }, // No product found
-      ],
-      expected: 'PRODUCT_NOT_FOUND',
-    },
-    {
-      name: 'Product in stock',
-      mocks: [
-        { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
-        { rows: [{ id: 1, name: 'Test Product', quantity: 5, is_active: true }] }, // In stock
-      ],
-      expected: 'PRODUCT_IN_STOCK',
-    },
-    {
-      name: 'Duplicate entry',
-      mocks: [
-        { rows: [{ id: 123, role: 'buyer', is_active: true }] }, // Valid buyer
-        { rows: [{ id: 1, name: 'Test Product', quantity: 0, is_active: true }] }, // Valid product
-        { rows: [{ id: 1, position: 3, created_at: '2024-01-01T00:00:00.000Z' }] }, // Existing entry
-      ],
-      expected: 'DUPLICATE_ENTRY',
-    },
-  ];
 
   for (const scenario of scenarios) {
     mockDb.query.mockClear();
@@ -131,6 +137,36 @@ async function demonstrateValidation() {
   console.log('\n=== Validation Demo Complete ===');
 }
 
+describe('WaitlistService validation demo scenario matrix', () => {
+  let service;
+
+  beforeEach(() => {
+    service = new WaitlistService();
+    mockDb.query.mockClear();
+  });
+
+  describe('input validation', () => {
+    it.each(invalidInputs)('rejects $description', async ({ buyerId, productId, quantity }) => {
+      const result = await service.joinWaitlist(buyerId, productId, quantity);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('business logic validation', () => {
+    it.each(scenarios)('returns $expected for $name', async (scenario) => {
+      mockDb.query.mockClear();
+
+      for (let i = 0; i < scenario.mocks.length; i++) {
+        mockDb.query.mockResolvedValueOnce(scenario.mocks[i]);
+      }
+
+      const result = await service.joinWaitlist(123, 1, 2);
+      expect(result.code).toBe(scenario.expected);
+    });
+  });
+});
+
 // Only run if this file is executed directly
 if (require.main === module) {
   // Set up Jest mocks
@@ -151,4 +187,4 @@ if (require.main === module) {
   demonstrateValidation().catch(console.error);
 }
 
-module.exports = { demonstrateValidation };
+module.exports = { demonstrateValidation, invalidInputs, scenarios };

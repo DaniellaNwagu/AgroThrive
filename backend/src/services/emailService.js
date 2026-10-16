@@ -1,33 +1,46 @@
-const { sendWithRetry } = require("../utils/mailer");
+const { sendWithRetry } = require('../utils/mailer');
+const logger = require('../logger');
 
 function smtpConfigured() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-async function sendVerificationEmail(email, token) {
-  if (!smtpConfigured()) return;
+async function sendVerificationEmail({ to, name, token }) {
+  if (!smtpConfigured()) {
+    logger.warn('[emailService] SMTP not configured — skipping verification email');
+    return null;
+  }
+  const verifyUrl = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
   return sendWithRetry(
     {
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: email,
-      subject: "Verify your GoGreen email",
-      text: `Verify your email with this token: ${token}`,
+      to,
+      subject: 'Verify your GoGreen account',
+      text: `Hi ${name},\n\nPlease verify your email by visiting:\n${verifyUrl}\n\nGoGreen`,
     },
-    "email_verification"
+    'email_verification'
   );
 }
 
-async function sendPasswordResetEmail(email, token) {
-  if (!smtpConfigured()) return;
+async function sendPasswordResetEmail({ to, name, token }) {
+  if (!smtpConfigured()) {
+    logger.warn('[emailService] SMTP not configured — skipping password reset email');
+    return null;
+  }
+  const resetUrl = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
   return sendWithRetry(
     {
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: email,
-      subject: "Reset your GoGreen password",
-      text: `Use this password reset token: ${token}`,
+      to,
+      subject: 'Reset your GoGreen password',
+      text: `Hi ${name},\n\nReset your password by visiting:\n${resetUrl}\n\nGoGreen`,
     },
-    "password_reset"
+    'password_reset'
   );
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+module.exports = {
+  smtpConfigured,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+};

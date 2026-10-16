@@ -4,7 +4,7 @@
 // JavaScript floats produces rounding errors (e.g. 0.1 + 0.2 = 0.30000000000000004),
 // so all amount math is performed on integer stroops using BigInt.
 
-const STROOPS_PER_XLM = 100000000n;
+const STROOPS_PER_XLM = 10000000n;
 const XLM_DECIMALS = 7;
 
 /**
@@ -63,7 +63,8 @@ export function add(a, b) {
 }
 
 /**
- * Multiply an amount by a quantity and return stroops.
+ * Multiply an amount by a decimal quantity and return stroops, rounding
+ * toward zero when the exact product is smaller than one stroop.
  * @param {bigint|string|number} value
  * @param {bigint|string|number} qty
  * @returns {bigint}

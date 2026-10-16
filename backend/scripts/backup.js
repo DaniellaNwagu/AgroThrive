@@ -4,7 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../src/logger');
 
-async function createBackup(options = {}) {
+function databasePath() {
+  if (process.env.DATABASE_URL?.startsWith('postgres')) {
+    throw new Error('backup.js supports SQLite files only; use PostgreSQL backup tooling for DATABASE_URL');
+  }
+  return path.resolve(process.env.DB_PATH || path.join(__dirname, '../market.db'));
+}
+
+async function createBackup() {
   try {
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const backupsDir = options.backupsDir || path.join(__dirname, '../backups');
@@ -16,7 +23,7 @@ async function createBackup(options = {}) {
     }
     
     // Determine database file path
-    const dbPath = options.dbPath || path.join(__dirname, '../market.db');
+    const dbPath = databasePath();
     if (!fs.existsSync(dbPath)) {
       throw new Error(`Database file not found: ${dbPath}`);
     }

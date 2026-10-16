@@ -15,6 +15,26 @@ import { test, expect } from '@playwright/test';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Default tolerance (in CSS pixels) allowed when comparing a layout edge
+ * against the viewport width. Sub-pixel rounding and scrollbar gutters can
+ * push a correctly laid-out element a hair past the viewport, so a small
+ * slack is intentional.
+ */
+export const VIEWPORT_OVERFLOW_TOLERANCE = 2;
+
+/**
+ * Returns true when `edge` (e.g. a bounding box's right edge, or the
+ * document's scrollWidth) fits within `viewportWidth`, allowing up to
+ * `tolerance` pixels of overflow.
+ *
+ * Kept free of any Playwright imports so it can be unit-tested without a
+ * browser.
+ */
+export function fitsWithinViewport(edge, viewportWidth, tolerance = VIEWPORT_OVERFLOW_TOLERANCE) {
+  return edge <= viewportWidth + tolerance;
+}
+
 /** Navigate to a page and wait for the network to settle. */
 async function goto(page, path) {
   await page.goto(path, { waitUntil: 'networkidle' });
@@ -66,7 +86,7 @@ test.describe('Responsive layout', () => {
     const box = await form.boundingBox();
     expect(box).not.toBeNull();
     // Form must not overflow the viewport width
-    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width + 2);
+    expect(fitsWithinViewport(box.x + box.width, page.viewportSize().width)).toBe(true);
   });
 
   test('marketplace grid reflows on narrow viewport', async ({ page }) => {
@@ -75,7 +95,7 @@ test.describe('Responsive layout', () => {
     // Page should not have horizontal scroll
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 2);
+    expect(fitsWithinViewport(scrollWidth, clientWidth)).toBe(true);
   });
 });
 

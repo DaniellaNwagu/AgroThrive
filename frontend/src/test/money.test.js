@@ -41,34 +41,34 @@ describe('money utilities', () => {
     });
 
     it('converts positive decimals and integers', () => {
-      expect(toStroops('1')).toBe(100000000n);
-      expect(toStroops(1)).toBe(100000000n);
+      expect(toStroops('1')).toBe(10000000n);
+      expect(toStroops(1)).toBe(10000000n);
       expect(toStroops('0.0000001')).toBe(1n);
-      expect(toStroops('12.34567')).toBe(1203456700n);
+      expect(toStroops('12.34567')).toBe(123456700n);
     });
 
     it('converts negative decimals and integers', () => {
-      expect(toStroops('-1')).toBe(-100000000n);
-      expect(toStroops(-1)).toBe(-100000000n);
+      expect(toStroops('-1')).toBe(-10000000n);
+      expect(toStroops(-1)).toBe(-10000000n);
       expect(toStroops('-0.5')).toBe(-5000000n);
     });
 
     it('converts very large numbers', () => {
-      expect(toStroops('1000000')).toBe(100000000000000n);
+      expect(toStroops('1000000')).toBe(10000000000000n);
     });
   });
 
   describe('fromStroops', () => {
     it('formats BigInt stroops into exact decimal string representation', () => {
       expect(fromStroops(0n)).toBe('0.0000000');
-      expect(fromStroops(100000000n)).toBe('1.0000000');
+      expect(fromStroops(10000000n)).toBe('1.0000000');
       expect(fromStroops(1n)).toBe('0.0000001');
-      expect(fromStroops(1234567000n)).toBe('12.34567000');
+      expect(fromStroops(123456700n)).toBe('12.3456700');
     });
 
     it('formats negative stroops correctly', () => {
-      expect(fromStroops(-100000000n)).toBe('-1.0000000');
-      expect(fromStroops(-50000000n)).toBe('-0.50000000');
+      expect(fromStroops(-10000000n)).toBe('-1.0000000');
+      expect(fromStroops(-5000000n)).toBe('-0.5000000');
     });
 
     it('accepts string and number inputs via toStroops', () => {
@@ -79,28 +79,35 @@ describe('money utilities', () => {
 
   describe('add', () => {
     it('adds two amounts in XLM and returns stroops', () => {
-      expect(add(1, 2)).toBe(300000000n);
+      expect(add(1, 2)).toBe(30000000n);
       expect(add('0.5', '0.25')).toBe(7500000n);
     });
 
     it('handles zero and negative amounts', () => {
       expect(add(0, 0)).toBe(0n);
-      expect(add('10', '-5')).toBe(500000000n);
-      expect(add('-2', '-3')).toBe(-500000000n);
+      expect(add('10', '-5')).toBe(50000000n);
+      expect(add('-2', '-3')).toBe(-50000000n);
     });
   });
 
   describe('mul', () => {
     it('multiplies value by quantity and returns stroops', () => {
-      expect(mul(2, 3)).toBe(600000000n);
-      expect(mul('1.5', 2)).toBe(210000000n);
+      expect(mul(2, 3)).toBe(60000000n);
+      expect(mul('1.5', 2)).toBe(30000000n);
       expect(mul('0.25', '4')).toBe(10000000n);
+    });
+
+    it('preserves fractional quantity precision', () => {
+      expect(mul('2.5', '0.5')).toBe(12500000n);
+      expect(mul('1', '3')).toBe(30000000n);
+      expect(mul('3', '1')).toBe(30000000n);
+      expect(mul('-2.5', '0.5')).toBe(-12500000n);
     });
 
     it('handles zero and negative inputs', () => {
       expect(mul(0, 5)).toBe(0n);
       expect(mul(5, 0)).toBe(0n);
-      expect(mul('-2', 3)).toBe(-600000000n);
+      expect(mul('-2', 3)).toBe(-60000000n);
     });
   });
 
@@ -116,7 +123,7 @@ describe('money utilities', () => {
       expect(formatXlm('1.5')).toBe('1.5');
       expect(formatXlm('1.5000000')).toBe('1.5');
       expect(formatXlm('0.0000001')).toBe('0.0000001');
-      expect(formatXlm(100000000n)).toBe('1');
+      expect(formatXlm(10000000n)).toBe('1');
     });
 
     it('formats negative numbers correctly', () => {

@@ -106,6 +106,32 @@ function exampleRouteIntegration() {
   return router;
 }
 
+/**
+ * Pure FIFO allocation helper for restock processing.
+ * Walks waitlist entries in order, allocating each entry's quantity while
+ * enough stock remains, and stops at the first entry that cannot be fully
+ * satisfied (preserving FIFO fairness).
+ *
+ * @param {Array<{buyer_id: number, quantity: number}>} entries - FIFO-ordered waitlist entries
+ * @param {number} newQuantity - stock available for allocation
+ * @returns {{allocations: Array<{buyer_id: number, quantity: number}>, remainingStock: number}}
+ */
+function allocateWaitlistStock(entries, newQuantity) {
+  const allocations = [];
+  let remainingStock = newQuantity;
+
+  for (const entry of entries) {
+    if (remainingStock >= entry.quantity) {
+      allocations.push({ buyer_id: entry.buyer_id, quantity: entry.quantity });
+      remainingStock -= entry.quantity;
+    } else {
+      break;
+    }
+  }
+
+  return { allocations, remainingStock };
+}
+
 // Example: Integration with restock functionality
 async function exampleRestockIntegration(productId, newQuantity) {
   const service = new WaitlistService();
@@ -122,19 +148,24 @@ async function exampleRestockIntegration(productId, newQuantity) {
 
   // This would be integrated into the actual restock endpoint
   // For now, just log what would happen
-  let remainingStock = newQuantity;
+  const { allocations, remainingStock } = allocateWaitlistStock(
+    entriesResult.data,
+    newQuantity
+  );
 
-  for (const entry of entriesResult.data) {
-    if (remainingStock >= entry.quantity) {
-      console.log(`Would create order for buyer ${entry.buyer_id}, quantity ${entry.quantity}`);
-      remainingStock -= entry.quantity;
-      // In real implementation: create order, remove waitlist entry, send notification
-    } else {
-      console.log(
-        `Insufficient stock for buyer ${entry.buyer_id} (needs ${entry.quantity}, have ${remainingStock})`
-      );
-      break;
-    }
+  for (const allocation of allocations) {
+    console.log(
+      `Would create order for buyer ${allocation.buyer_id}, quantity ${allocation.quantity}`
+    );
+    // In real implementation: create order, remove waitlist entry, send notification
+  }
+
+  const allocatedCount = allocations.length;
+  if (allocatedCount < entriesResult.data.length) {
+    const skipped = entriesResult.data[allocatedCount];
+    console.log(
+      `Insufficient stock for buyer ${skipped.buyer_id} (needs ${skipped.quantity}, have ${remainingStock})`
+    );
   }
 
   console.log(`Remaining stock after processing waitlist: ${remainingStock}`);
@@ -144,4 +175,5 @@ module.exports = {
   exampleApiUsage,
   exampleRouteIntegration,
   exampleRestockIntegration,
+  allocateWaitlistStock,
 };

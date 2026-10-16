@@ -4,6 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../src/logger');
 
+function databasePath() {
+  if (process.env.DATABASE_URL?.startsWith('postgres')) {
+    throw new Error('restore.js supports SQLite files only; use PostgreSQL restore tooling for DATABASE_URL');
+  }
+  return path.resolve(process.env.DB_PATH || path.join(__dirname, '../market.db'));
+}
+
 async function restoreFromBackup(backupFilePath) {
   try {
     if (!backupFilePath) {
@@ -24,8 +31,8 @@ async function restoreFromBackup(backupFilePath) {
     }
     
     // Determine database file path
-    const dbPath = path.join(__dirname, '../market.db');
-    const dbBackupPath = path.join(__dirname, '../market.db.backup');
+    const dbPath = databasePath();
+    const dbBackupPath = `${dbPath}.backup`;
     
     // Create a backup of current database before restore
     if (fs.existsSync(dbPath)) {

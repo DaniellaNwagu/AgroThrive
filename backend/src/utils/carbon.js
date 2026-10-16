@@ -14,6 +14,11 @@ const CATEGORY_DEFAULTS = {
 // Supermarket multiplier (typically 2-3x due to supply chain)
 const SUPERMARKET_MULTIPLIER = 2.5;
 
+function toNonNegativeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
 /**
  * Estimate carbon footprint for a product
  * @param {Object} product - Product with category and optional carbon_kg_per_unit
@@ -29,15 +34,18 @@ function estimateCarbonFootprint(product, quantity, distanceKm = 0) {
   }
 
   // Use farmer-provided value or category default
-  const baseCarbon =
-    product.carbon_kg_per_unit || CATEGORY_DEFAULTS[product.category] || CATEGORY_DEFAULTS.other;
+  const suppliedCarbon = toNonNegativeNumber(product.carbon_kg_per_unit);
+  const baseCarbon = suppliedCarbon ?? CATEGORY_DEFAULTS[product.category] ?? CATEGORY_DEFAULTS.other;
+  const distance = toNonNegativeNumber(distanceKm) ?? 0;
 
   // Add transport emissions (0.1 kg CO2 per km per unit, simplified)
-  const transportCarbon = distanceKm > 0 ? (distanceKm * 0.1) / quantity : 0;
+  const transportCarbon = distance > 0 ? (distance * 0.1) / quantity : 0;
 
   const carbonKg = (baseCarbon + transportCarbon) * quantity;
   const supermarketCarbonKg = carbonKg * SUPERMARKET_MULTIPLIER;
-  const savingsPercent = Math.round(((supermarketCarbonKg - carbonKg) / supermarketCarbonKg) * 100);
+  const savingsPercent = supermarketCarbonKg === 0
+    ? 0
+    : Math.min(100, Math.max(0, Math.round(((supermarketCarbonKg - carbonKg) / supermarketCarbonKg) * 100)));
 
   return {
     carbonKg: parseFloat(carbonKg.toFixed(2)),
@@ -55,6 +63,9 @@ function estimateCarbonFootprint(product, quantity, distanceKm = 0) {
  * @returns {number} Distance in kilometers
  */
 function calculateDistance(lat1, lng1, lat2, lng2) {
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) {
+    throw new TypeError('Coordinates must be finite numbers');
+  }
   const R = 6371; // Earth radius in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
