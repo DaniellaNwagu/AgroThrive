@@ -64,10 +64,7 @@ const MAX_INDEX_ENTRIES: u32 = 1_000;
 // Each variant has a stable u32 code that is part of the on-chain ABI.
 // NEVER reuse a code, even after removing a variant.
 // When adding a new variant, use NEXT_CODE and increment it.
-// NEXT_CODE: 26
-// NEXT_CODE: 29
-// NEXT_CODE: 25
-// NEXT_CODE: 24
+// NEXT_CODE: 32
 // ---------------------------------------------------------------------------
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -99,9 +96,6 @@ pub enum EscrowError {
     /// `batch_release` / `batch_deposit` was called with more than
     /// `MAX_BATCH_RELEASE` / `MAX_BATCH_DEPOSIT` entries. (#856, #1292)
     BatchTooLarge          = 17,
-    BelowMinDeposit = 16,
-    /// `batch_release` was called with more than `MAX_BATCH_RELEASE` order IDs. (#856)
-    BatchTooLarge = 17,
     /// No snapshot exists for the requested (order_id, ledger_sequence). (#858)
     SnapshotNotFound = 18,
     /// Release called before the pre-order unlock date. (#875)
@@ -119,26 +113,17 @@ pub enum EscrowError {
     /// Coop threshold is 0, exceeds member count, or members contain duplicates. (#1296)
     InvalidCoopConfig      = 25,
     /// Deposit timeout is shorter than `MIN_TIMEOUT_SECS` from now. (#1291)
-    InvalidTimeout         = 23,
+    InvalidTimeout         = 26,
     /// `order_id` is at or above `MAX_ORDER_ID`. (#1291)
-    InvalidOrderId         = 24,
+    InvalidOrderId         = 27,
     /// `cooperative_royalty_bps` exceeds 10 000 (100%). (#1291)
-    InvalidRoyalty         = 25,
-    /// Party already submitted `MAX_EVIDENCE_PER_PARTY` evidence hashes. (#1291)
-    EvidenceLimitReached   = 26,
-    /// Operation requires the escrow to be in `Disputed` status. (#1291)
-    NotDisputed            = 27,
+    InvalidRoyalty         = 28,
     /// Admin has not been configured; call `initialize` first. (#1291)
-    NotInitialized         = 28,
-    /// A stored value required for settlement (platform fee, fee destination or
-    /// admin) has not been set: `initialize()` was never called. Settlement fails
-    /// closed rather than defaulting to caller-supplied or zero values. (#1301)
-    NotInitialized         = 23,
+    NotInitialized         = 29,
     /// `resolve_dispute` called on an escrow that is not in the `Disputed` state. (#1299)
-    NotInDispute           = 24,
+    NotInDispute           = 30,
     /// Buyer equals farmer, or the cooperative address equals either party. (#1290)
-    InvalidParties         = 23,
-    TooManyCoopSigners = 22,
+    InvalidParties         = 31,
 }
 
 #[derive(Clone, Debug, PartialEq)]
