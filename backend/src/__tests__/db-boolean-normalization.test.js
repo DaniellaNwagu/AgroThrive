@@ -160,3 +160,12 @@ describe('Database - Boolean Normalization', () => {
     expect(result.rows[0].active).toBe(true);
   });
 });
+
+describe('normalizeBooleans direct export', () => {
+  const { normalizeBooleans } = require('../db/schema');
+  test('preserves null and normalizes supported scalar forms', () => {
+    expect(normalizeBooleans(null)).toBeNull();
+    expect(normalizeBooleans({ active: 1, fee_bumped: 0, is_preorder: 'true', success: '0', acknowledged: null, name: '1' }))
+      .toEqual({ active: true, fee_bumped: false, is_preorder: true, success: false, acknowledged: null, name: '1' });
+  });
+});
