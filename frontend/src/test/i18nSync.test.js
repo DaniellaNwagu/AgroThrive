@@ -44,3 +44,12 @@ describe('i18n translation sync (#435)', () => {
     expect(fallbackI18n.t('common.loading')).not.toBe('common.loading');
   });
 });
+
+describe('nested sync helpers', () => {
+  const { getKeys, getMissingKeys } = require('../../scripts/i18n-sync-utils');
+  it('flattens and compares nested fixture keys', () => {
+    expect(getKeys({ a: { b: { c: 1 } }, list: [] })).toEqual(['a.b.c', 'list']);
+    expect(getMissingKeys({ a: { b: 1 }, c: 2 }, { a: { b: 1 } })).toEqual(['c']);
+    expect(getMissingKeys({ a: { b: 1 } }, { a: { b: 2 } })).toEqual([]);
+  });
+});

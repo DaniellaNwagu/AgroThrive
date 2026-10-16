@@ -103,6 +103,7 @@ if (USE_POSTGRES) {
   };
 
   db.ready = runMigrations(db);
+  db.normalizeBooleans = normalizeBooleans;
   db.ready.catch((err) => logger.error('[DB] Migration failed:', { error: err.message }));
   module.exports = db;
 } else {
@@ -193,6 +194,7 @@ if (USE_POSTGRES) {
 
   const { runMigrations } = require('./migrationRunner');
   db.ready = runMigrations(db);
+  db.normalizeBooleans = normalizeBooleans;
   db.ready.catch((err) => logger.error('[DB] Migration failed:', { error: err.message }));
   module.exports = db;
 }
