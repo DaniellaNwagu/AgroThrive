@@ -5,46 +5,9 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
 import { useNetwork } from '../context/NetworkContext';
+import { ALL_STATUSES, STATUS_ICON, STATUS_STYLE, getTimeline } from '../utils/orderStatus';
 
-const ALL_STATUSES = [
-  'pending',
-  'paid',
-  'processing',
-  'shipped',
-  'delivered',
-  'disputed',
-  'cancelled',
-  'refunded',
-  'failed',
-];
 const FILTER_TABS = ['all', ...ALL_STATUSES];
-
-const STATUS_STYLE = {
-  paid: { bg: '#d8f3dc', color: '#2d6a4f' },
-  pending: { bg: '#fff3cd', color: '#856404' },
-  processing: { bg: '#cce5ff', color: '#004085' },
-  shipped: { bg: '#d1ecf1', color: '#0c5460' },
-  delivered: { bg: '#d4edda', color: '#155724' },
-  failed: { bg: '#fee', color: '#c0392b' },
-  disputed: { bg: '#ffe4cc', color: '#a04000' },
-  cancelled: { bg: '#f0f0f0', color: '#555' },
-  refunded: { bg: '#e8d5f5', color: '#6a0dad' },
-};
-
-const STATUS_ICON = {
-  pending: '⏳',
-  paid: '✅',
-  processing: '⚙️',
-  shipped: '🚚',
-  delivered: '📦',
-  failed: '❌',
-  disputed: '⚠️',
-  cancelled: '🚫',
-  refunded: '↩️',
-};
-
-// Timeline steps shown in order detail
-const TIMELINE_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
 
 const s = {
   page: { maxWidth: 900, margin: '0 auto', padding: 24 },
@@ -147,11 +110,10 @@ const s = {
 function StatusTimeline({ status }) {
   if (status === 'failed')
     return <div style={{ fontSize: 12, color: '#c0392b', marginTop: 8 }}>❌ Order failed</div>;
-  const currentIdx = TIMELINE_STEPS.indexOf(status);
+  const timeline = getTimeline(status);
   return (
     <div style={s.timeline}>
-      {TIMELINE_STEPS.map((step, i) => {
-        const done = i <= currentIdx;
+      {timeline.map(({ step, completed: done }, i) => {
         return (
           <React.Fragment key={step}>
             <div style={s.step}>
@@ -160,8 +122,8 @@ function StatusTimeline({ status }) {
                 {STATUS_ICON[step]} {step}
               </span>
             </div>
-            {i < TIMELINE_STEPS.length - 1 && (
-              <div style={{ ...s.stepLine, background: i < currentIdx ? '#2d6a4f' : '#eee' }} />
+            {i < timeline.length - 1 && (
+              <div style={{ ...s.stepLine, background: done && timeline[i + 1].completed ? '#2d6a4f' : '#eee' }} />
             )}
           </React.Fragment>
         );
