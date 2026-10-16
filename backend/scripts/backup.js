@@ -14,7 +14,7 @@ function databasePath() {
 async function createBackup() {
   try {
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    const backupsDir = path.join(__dirname, '../backups');
+    const backupsDir = options.backupsDir || path.join(__dirname, '../backups');
     
     // Ensure backups directory exists
     if (!fs.existsSync(backupsDir)) {
@@ -41,6 +41,7 @@ async function createBackup() {
     
     console.log(`Backup created successfully: ${backupFileName}`);
     console.log(`Location: ${backupPath}`);
+    return backupPath;
     
   } catch (error) {
     logger.error('Backup failed:', { error: error.message });
