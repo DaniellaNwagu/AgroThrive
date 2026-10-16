@@ -14,30 +14,37 @@
  * Theme state is verified through:
  *   - document.documentElement[data-theme] (set by ThemeContext on every change)
  *   - localStorage['theme'] (persisted by ThemeContext; absent when using system)
+ *
+ * The attribute/key constants and the pure readback/injection logic live in
+ * ./themeHelpers.js so they can be unit tested without a browser.
  */
 
 import { test, expect } from '@playwright/test';
+import {
+  THEME_STORAGE_KEY,
+  readDataTheme,
+  readStoredTheme,
+  writeUser,
+} from './themeHelpers.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Inject a fake authenticated user so the navbar shows auth controls. */
 async function injectUser(page, role = 'buyer') {
   await page.addInitScript((r) => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({ id: 1, name: 'Test User', email: 'test@example.com', role: r })
-    );
+    // eslint-disable-next-line no-undef
+    window.__themeHelpers.writeUser(localStorage, r);
   }, role);
 }
 
 /** Read the current data-theme attribute from the root element. */
 function getDataTheme(page) {
-  return page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+  return page.evaluate(() => readDataTheme(document));
 }
 
 /** Read localStorage['theme'] (null when using system preference). */
 function getStoredTheme(page) {
-  return page.evaluate(() => localStorage.getItem('theme'));
+  return page.evaluate(() => readStoredTheme(localStorage));
 }
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -46,9 +53,9 @@ test.describe('Theme controls', () => {
   test.beforeEach(async ({ page }) => {
     // Always start with light mode explicitly set so tests are deterministic
     // regardless of the runner's OS colour scheme.
-    await page.addInitScript(() => {
-      localStorage.setItem('theme', 'light');
-    });
+    await page.addInitScript((key) => {
+      localStorage.setItem(key, 'light');
+    }, THEME_STORAGE_KEY);
   });
 
   // ── Manual toggle ───────────────────────────────────────────────────────────
@@ -67,7 +74,7 @@ test.describe('Theme controls', () => {
 
     test('toggle button switches back from dark to light', async ({ page }) => {
       // Pre-seed dark
-      await page.addInitScript(() => { localStorage.setItem('theme', 'dark'); });
+      await page.addInitScript((key) => { localStorage.setItem(key, 'dark'); }, THEME_STORAGE_KEY);
       await injectUser(page);
       await page.goto('/', { waitUntil: 'networkidle' });
 
