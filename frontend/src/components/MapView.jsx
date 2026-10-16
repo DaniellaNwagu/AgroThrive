@@ -51,7 +51,7 @@ const s = {
   },
 };
 
-function groupByFarmer(products) {
+export function groupByFarmer(products) {
   const map = new Map();
   for (const p of products) {
     if (p.farmer_lat == null || p.farmer_lng == null) continue;
@@ -72,7 +72,7 @@ function clusterItemKey(group) {
  * Returns an array of items, each either a single group ({ type: 'pin', ...group })
  * or a merged cluster ({ type: 'cluster', lat, lng, count, groups: [...] }).
  */
-function buildClusters(groups, zoom) {
+export function buildClusters(groups, zoom) {
   // Radius shrinks as zoom increases — more spread out at higher zoom
   const radius = BASE_CLUSTER_RADIUS / Math.pow(2, Math.max(0, zoom - 5));
   const assigned = new Array(groups.length).fill(false);

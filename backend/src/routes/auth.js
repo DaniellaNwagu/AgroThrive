@@ -38,7 +38,8 @@ const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 // AES-256-GCM encrypt the mnemonic. The salt + iv + authTag + ciphertext are
 // all stored together as a single hex string so the column is self-contained.
 
-const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, dkLen: 32 };
+const PARAM_SETS = { 1: { N: 16384, r: 8, p: 1, dkLen: 32 } };
+const CURRENT_PARAM_VERSION = 1;
 
 async function encryptMnemonic(mnemonic, password) {
   const salt = crypto.randomBytes(16);
@@ -46,8 +47,8 @@ async function encryptMnemonic(mnemonic, password) {
     crypto.scrypt(
       password,
       salt,
-      SCRYPT_PARAMS.dkLen,
-      { N: SCRYPT_PARAMS.N, r: SCRYPT_PARAMS.r, p: SCRYPT_PARAMS.p },
+      PARAM_SETS[CURRENT_PARAM_VERSION].dkLen,
+      PARAM_SETS[CURRENT_PARAM_VERSION],
       (e, k) => (e ? reject(e) : resolve(k))
     )
   );
@@ -56,21 +57,24 @@ async function encryptMnemonic(mnemonic, password) {
   const ct = Buffer.concat([cipher.update(mnemonic, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   // layout: salt(16) | iv(12) | tag(16) | ciphertext
-  return Buffer.concat([salt, iv, tag, ct]).toString('hex');
+  return Buffer.concat([Buffer.from([CURRENT_PARAM_VERSION]), salt, iv, tag, ct]).toString('hex');
 }
 
 async function decryptMnemonic(encryptedHex, password) {
   const buf = Buffer.from(encryptedHex, 'hex');
-  const salt = buf.subarray(0, 16);
-  const iv = buf.subarray(16, 28);
-  const tag = buf.subarray(28, 44);
-  const ct = buf.subarray(44);
+  if (buf.length < 45) return null;
+  const params = PARAM_SETS[buf[0]];
+  if (!params) return null;
+  const salt = buf.subarray(1, 17);
+  const iv = buf.subarray(17, 29);
+  const tag = buf.subarray(29, 45);
+  const ct = buf.subarray(45);
   const key = await new Promise((resolve, reject) =>
     crypto.scrypt(
       password,
       salt,
-      SCRYPT_PARAMS.dkLen,
-      { N: SCRYPT_PARAMS.N, r: SCRYPT_PARAMS.r, p: SCRYPT_PARAMS.p },
+      params.dkLen,
+      params,
       (e, k) => (e ? reject(e) : resolve(k))
     )
   );
@@ -757,3 +761,5 @@ function generateBackupCodes(count) {
 }
 
 module.exports = router;
+module.exports.encryptMnemonic = encryptMnemonic;
+module.exports.decryptMnemonic = decryptMnemonic;
