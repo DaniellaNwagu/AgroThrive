@@ -1287,4 +1287,29 @@ mod tests {
             assert_eq!(s.withdrawn_amount, 300);
         });
     }
+
+    #[test]
+    fn compute_surplus_is_zero_when_deposit_is_consumable() {
+        let env = Env::default();
+        assert_eq!(compute_surplus(&make_stream(&env, 10, 1_000, 0, 100), 50, 10), 0);
+    }
+
+    #[test]
+    fn compute_surplus_returns_unconsumable_remainder() {
+        let env = Env::default();
+        assert_eq!(compute_surplus(&make_stream(&env, 10, 1_000, 0, 100), 30, 5), 350);
+    }
+
+    #[test]
+    fn compute_surplus_after_end_returns_remaining_deposit() {
+        let env = Env::default();
+        assert_eq!(compute_surplus(&make_stream(&env, 10, 2_000, 0, 100), 100, 5), 1_000);
+    }
+
+    #[test]
+    #[should_panic(expected = "remaining_time * new_rate overflowed i128")]
+    fn compute_surplus_panics_on_overflow() {
+        let env = Env::default();
+        compute_surplus(&make_stream(&env, 0, i128::MAX, 0, u64::MAX), 0, i128::MAX);
+    }
 }
