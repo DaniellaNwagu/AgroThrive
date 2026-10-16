@@ -17,12 +17,17 @@
 
 import { readdirSync, statSync, writeFileSync } from 'fs';
 import { join, basename } from 'path';
+import { classifyChunks, exceedsBudget, parseBudget } from './bundle-size-utils.js';
 
 const DIST_ASSETS = join(process.cwd(), 'dist', 'assets');
 
 // Budgets in kibibytes (1 KiB = 1024 bytes).
-const INITIAL_BUDGET_KB = Number(process.env.BUNDLE_INITIAL_BUDGET_KB ?? 500);
-const TOTAL_BUDGET_KB   = Number(process.env.BUNDLE_TOTAL_BUDGET_KB   ?? 5000);
+let INITIAL_BUDGET_KB;
+let TOTAL_BUDGET_KB;
+try {
+  INITIAL_BUDGET_KB = parseBudget('BUNDLE_INITIAL_BUDGET_KB', process.env.BUNDLE_INITIAL_BUDGET_KB, 500);
+  TOTAL_BUDGET_KB = parseBudget('BUNDLE_TOTAL_BUDGET_KB', process.env.BUNDLE_TOTAL_BUDGET_KB, 5000);
+} catch (error) { console.error(`[bundle-size] ${error.message}`); process.exit(1); }
 
 function kib(bytes) {
   return (bytes / 1024).toFixed(1);
@@ -48,11 +53,9 @@ if (jsFiles.length === 0) {
 
 // Initial chunks = vendor chunk + index/main chunk (everything a user must
 // download before React can render, regardless of which route they visit).
-const initialChunks = jsFiles.filter(
-  f => f.name.startsWith('vendor') || f.name.startsWith('index') || f.name.startsWith('main')
-);
-const initialBytes  = initialChunks.reduce((s, f) => s + f.size, 0);
-const totalBytes    = jsFiles.reduce((s, f) => s + f.size, 0);
+let initialChunks; let initialBytes; let totalBytes;
+try { ({ initial: initialChunks, initialBytes, totalBytes } = classifyChunks(jsFiles)); }
+catch (error) { console.error(`[bundle-size] ${error.message}`); process.exit(1); }
 
 // ── Report ──────────────────────────────────────────────────────────────────
 console.log('\n── Bundle size report ──────────────────────────────────────');
@@ -89,7 +92,7 @@ if (summaryFile) {
 // ── Budget enforcement ───────────────────────────────────────────────────────
 let failed = false;
 
-if (initialBytes / 1024 > INITIAL_BUDGET_KB) {
+if (exceedsBudget(initialBytes, INITIAL_BUDGET_KB)) {
   console.error(
     `[bundle-size] ❌ Initial chunk ${kib(initialBytes)} KiB exceeds budget of ${INITIAL_BUDGET_KB} KiB.`
   );
@@ -99,7 +102,7 @@ if (initialBytes / 1024 > INITIAL_BUDGET_KB) {
   console.log(`[bundle-size] ✅ Initial chunk ${kib(initialBytes)} KiB is within budget (${INITIAL_BUDGET_KB} KiB).`);
 }
 
-if (totalBytes / 1024 > TOTAL_BUDGET_KB) {
+if (exceedsBudget(totalBytes, TOTAL_BUDGET_KB)) {
   console.error(
     `[bundle-size] ❌ Total bundle ${kib(totalBytes)} KiB exceeds budget of ${TOTAL_BUDGET_KB} KiB.`
   );
