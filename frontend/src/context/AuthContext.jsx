@@ -31,7 +31,11 @@ export function AuthProvider({ children }) {
             localStorage.setItem('user', JSON.stringify(profile));
           });
       })
-      .catch(() => {}) // no cookie, expired, or profile fetch failed — stay logged out
+      .catch(() => {
+        clearAccessToken();
+        localStorage.removeItem('user');
+        clearUserCache();
+      })
       .finally(() => setLoading(false));
   }, []);
 
