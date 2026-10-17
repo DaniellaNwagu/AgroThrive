@@ -84,33 +84,6 @@ const s = {
     fontSize: 12,
   },
   msg: { padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 14 },
-};
-
-const EMPTY_FORM = {
-  name: '',
-  description: '',
-  price: '',
-  quantity: '',
-  unit: 'kg',
-  category: 'other',
-  min_order_quantity: '',
-  batch_id: '',
-  pricing_type: 'unit',
-  min_weight: '',
-  max_weight: '',
-  pricing_model: 'fixed',
-  min_price: '',
-  is_preorder: false,
-  preorder_delivery_date: '',
-  allergens: [],
-  allowed_regions: [],
-  nutrition: {
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    fiber: '',
-    vitamins: {},
   preview: {
     width: '100%',
     maxHeight: 240,
@@ -200,6 +173,34 @@ const EMPTY_FORM = {
     color: '#c0392b',
   },
   address: { fontSize: 12, color: '#888', marginTop: 4 },
+};
+
+const EMPTY_FORM = {
+  name: '',
+  description: '',
+  price: '',
+  quantity: '',
+  unit: 'kg',
+  category: 'other',
+  min_order_quantity: '',
+  batch_id: '',
+  pricing_type: 'unit',
+  min_weight: '',
+  max_weight: '',
+  pricing_model: 'fixed',
+  min_price: '',
+  is_preorder: false,
+  preorder_delivery_date: '',
+  allergens: [],
+  allowed_regions: [],
+  nutrition: {
+    calories: '',
+    protein: '',
+    carbs: '',
+    fat: '',
+    fiber: '',
+    vitamins: {},
+  },
 };
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -568,7 +569,6 @@ export default function Dashboard() {
     const file = e.dataTransfer.files?.[0];
     if (file) validateAndSetImage(file);
   }
-  }, [user?.id]);
 
   useEffect(() => {
     if (user?.role !== 'farmer') return;
@@ -1147,39 +1147,6 @@ export default function Dashboard() {
         onClaim={handleClaimEarnings}
       />
 
-      <div style={{ ...s.card, marginBottom: 24 }}>
-        <h3 style={{ marginBottom: 12, color: '#333' }}>Flash Sales</h3>
-        {flashSaleMsg && <div role={flashSaleMsg.type === 'ok' ? 'status' : 'alert'} style={{ ...s.msg, background: flashSaleMsg.type === 'ok' ? '#d8f3dc' : '#fee', color: flashSaleMsg.type === 'ok' ? '#2d6a4f' : '#c0392b' }}>{flashSaleMsg.text}</div>}
-        <form onSubmit={handleSetFlashSale} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'end' }}>
-          <div>
-            <label style={s.label}>Product</label>
-            <select style={s.input} value={flashSaleForm.product_id} onChange={(e) => setFlashSaleForm((f) => ({ ...f, product_id: e.target.value }))} required>
-              <option value="">Select product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={s.label}>Flash Price (XLM)</label>
-            <input style={s.input} type="number" min="0" step="any" required value={flashSaleForm.flash_sale_price} onChange={(e) => setFlashSaleForm((f) => ({ ...f, flash_sale_price: e.target.value }))} />
-          </div>
-          <div>
-            <label style={s.label}>Ends At</label>
-            <input style={s.input} type="datetime-local" required value={flashSaleForm.flash_sale_ends_at} onChange={(e) => setFlashSaleForm((f) => ({ ...f, flash_sale_ends_at: e.target.value }))} />
-          </div>
-          <button type="submit" style={s.btn}>Set Flash Sale</button>
-        </form>
-
-        <div style={{ marginTop: 14 }}>
-          {products.filter((p) => p.flash_sale_price && p.flash_sale_ends_at).map((p) => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: 10, marginTop: 10 }}>
-              <div style={{ fontSize: 14 }}>
-                <strong>{p.name}</strong> - {p.flash_sale_price} XLM until {new Date(p.flash_sale_ends_at).toLocaleString()}
-              </div>
-              <button type="button" style={{ ...s.btn, background: '#c0392b' }} onClick={() => handleCancelFlashSale(p.id)}>Cancel</button>
-            </div>
-          ))}
-        </div>
-      </div>
       <FlashSaleManager products={products} onChanged={load} />
 
       {/* Bulk Price Update */}
@@ -1204,10 +1171,6 @@ export default function Dashboard() {
               ⬇ PDF
             </button>
           </div>
-          {products.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>No products yet. Add your first listing.</p>}
-          {products.map(p => (
-            <div key={p.id} style={{ ...s.product, flexDirection: 'column', alignItems: 'stretch' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {products.length === 0 && (
             <p style={{ color: '#888', fontSize: 14 }}>No products yet. Add your first listing.</p>
           )}
@@ -1244,13 +1207,6 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 13, color: '#666' }}>
-                      {p.pricing_model === 'pwyw'
-                        ? `Min ${p.min_price} XLM (PWYW)`
-                        : p.pricing_model === 'donation'
-                          ? 'Donation'
-                          : `${p.price} XLM`}{' '}
-                      · {p.quantity} {p.unit}
                     <div style={{ fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       {p.pricing_model === 'pwyw' ? `Min ${p.min_price} XLM (PWYW)` : p.pricing_model === 'donation' ? 'Donation' : (
                         <>
@@ -1664,6 +1620,7 @@ export default function Dashboard() {
               <button style={s.csvDownloadErrBtn} onClick={downloadCsvErrorReport}>
                 {t('dashboard.downloadErrorReport')}
               </button>
+            )}
             {csvResult.details && csvResult.details.length > 0 && (
               <div style={{ marginTop: 8, fontSize: 12 }}>
                 <strong>{t('common.errors')}:</strong>

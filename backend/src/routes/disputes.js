@@ -154,9 +154,6 @@ router.patch('/:id/resolve', auth, async (req, res, next) => {
     if (adminSecret) {
       invokeEscrowContract({
         action: 'resolve_dispute',
-        senderSecret: adminSecret,
-      const escrowPayload = {
-        action: 'dispute',
         senderSecret: await decryptUserSecretKey(adminSecret),
         orderId: dispute.order_id,
         buyerPublicKey: buyer?.stellar_public_key,

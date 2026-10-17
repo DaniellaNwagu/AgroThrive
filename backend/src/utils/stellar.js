@@ -349,44 +349,7 @@ async function createPreorderClaimableBalance({
 
 // Get the shared Soroban RPC server instance
 function getSorobanServer() {
-  const sorobanRpcUrl =
-    process.env.SOROBAN_RPC_URL ||
-    (isTestnet ? 'https://soroban-testnet.stellar.org' : 'https://soroban.stellar.org');
-  const sorobanServer = new StellarSdk.SorobanRpc.Server(sorobanRpcUrl);
-
-  // Build a ledger key for the contract's data entries
-  const contractAddress = new StellarSdk.Address(contractId);
-  const ledgerKey = StellarSdk.xdr.LedgerKey.contractData(
-    new StellarSdk.xdr.LedgerKeyContractData({
-      contract: contractAddress.toScAddress(),
-      key: StellarSdk.xdr.ScVal.scvLedgerKeyContractInstance(),
-      durability: StellarSdk.xdr.ContractDataDurability.persistent(),
-    })
-  );
-
-  let response;
-  try {
-    response = await sorobanServer.getLedgerEntries(ledgerKey);
-  } catch (e) {
-    if (e.message?.includes('not found') || e.code === 404) {
-      const notFound = new Error('Contract not found');
-      notFound.code = 404;
-      throw notFound;
-    }
-    throw e;
-  }
-
-  const entries = (response.entries || [])
-    .map((entry) => {
-      const data = entry.val?.contractData?.();
-      const key = data ? StellarSdk.scValToNative(data.key()) : String(entry.key);
-      const val = data ? StellarSdk.scValToNative(data.val()) : null;
-      const durability = data?.durability()?.name || 'Persistent';
-      return { key: String(key), val, durability };
-    })
-    .filter((e) => !prefix || String(e.key).startsWith(prefix));
-
-  return entries;
+  return sorobanServer;
 }
 
 /**
