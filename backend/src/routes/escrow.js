@@ -7,7 +7,35 @@ const { err } = require('../middleware/error');
 // Escrow state changes infrequently, so responses are cached briefly (30s TTL)
 // to avoid hammering the Soroban RPC for repeated status checks.
 const CACHE_TTL_MS = 30 * 1000;
+// Upper bound on the number of distinct orderIds kept in the cache at once,
+// to prevent unbounded memory growth from entries that are never evicted.
+const MAX_CACHE_ENTRIES = 500;
 const cache = new Map();
+
+/**
+ * Store a fresh cache entry for orderId, first purging any already-expired
+ * entries, then evicting the oldest entry (Map preserves insertion order)
+ * if the cache would otherwise exceed MAX_CACHE_ENTRIES.
+ */
+function setCacheEntry(orderId, data) {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expires <= now) {
+      cache.delete(key);
+    }
+  }
+
+  // Re-inserting an existing key refreshes its position at the end (most
+  // recently used), which also avoids evicting a key we're about to set.
+  cache.delete(orderId);
+
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
+
+  cache.set(orderId, { data, expires: now + CACHE_TTL_MS });
+}
 
 // GET /api/escrow/:orderId/state  (authenticated)
 // Returns a human-readable escrow status for a single order. Buyers may query
@@ -56,7 +84,7 @@ router.get('/:orderId/state', auth, async (req, res) => {
       last_updated_ledger: escrow.lastUpdatedLedger,
     };
 
-    cache.set(orderId, { data, expires: Date.now() + CACHE_TTL_MS });
+    setCacheEntry(orderId, data);
     res.json({ success: true, data });
   } catch (error) {
     err(res, 500, `Failed to fetch escrow state: ${error.message}`, 'rpc_error');

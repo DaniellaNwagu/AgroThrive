@@ -98,6 +98,15 @@ jest.mock('../src/utils/stellar', () => ({
   invokeEscrowContract: jest.fn().mockResolvedValue({ txHash: 'ESCROW_TX' }),
   burnRewardTokens: jest.fn().mockResolvedValue({}),
   getContractEvents: jest.fn().mockResolvedValue({ events: [] }),
+  getEscrowState: jest.fn().mockResolvedValue({
+    status: 'funded',
+    buyer: 'GBUYER',
+    farmer: 'GFARMER',
+    amount: 20,
+    timeoutUnix: null,
+    escrowAddress: 'GESCROW',
+    lastUpdatedLedger: 1,
+  }),
   server: {
     payments: jest.fn(() => ({
       forAccount: jest.fn().mockReturnThis(),
@@ -171,6 +180,7 @@ jest.mock('../src/routes', () => {
   router.use('/api/batches', require('../src/routes/batches'));
   router.use('/api/network', require('../src/routes/network'));
   router.use('/api/market', require('../src/routes/market'));
+  router.use('/api/escrow', require('../src/routes/escrow'));
   // #1004 bundles & bundle-discounts
   router.use('/api/bundles', require('../src/routes/bundles'));
   router.use('/api/farmers', require('../src/routes/bundleDiscounts'));
@@ -300,6 +310,15 @@ beforeEach(() => {
   stellar.invokeContract = jest.fn();
   stellar.getContractWasmHash = jest.fn().mockResolvedValue('0'.repeat(64));
   stellar.getOrderBook?.mockResolvedValue({ bids: [], asks: [], base: 'XLM', counter: 'USDC' });
+  stellar.getEscrowState?.mockResolvedValue({
+    status: 'funded',
+    buyer: 'GBUYER',
+    farmer: 'GFARMER',
+    amount: 20,
+    timeoutUnix: null,
+    escrowAddress: 'GESCROW',
+    lastUpdatedLedger: 1,
+  });
   if (stellar.invokeEscrowContract) stellar.invokeEscrowContract.mockResolvedValue({ txHash: 'ESCROW_TX' });
   if (stellar.mintRewardTokens) stellar.mintRewardTokens.mockResolvedValue({});
   if (stellar.burnRewardTokens) stellar.burnRewardTokens.mockResolvedValue({});
