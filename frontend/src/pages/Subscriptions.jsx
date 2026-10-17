@@ -1,15 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { add, mul, formatXlm } from '../utils/money';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-const FREQUENCIES = ['weekly', 'biweekly', 'monthly'];
 const FREQ_LABEL = { weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month' };
 
 const s = {
@@ -17,9 +10,6 @@ const s = {
   title:   { fontSize: 24, fontWeight: 700, color: '#2d6a4f', marginBottom: 4 },
   sub:     { color: '#888', fontSize: 14, marginBottom: 24 },
   card:    { background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 8px #0001', marginBottom: 24 },
-  label:   { display: 'block', fontSize: 13, marginBottom: 4, color: '#555' },
-  input:   { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, marginBottom: 12, boxSizing: 'border-box' },
-  btn:     { background: '#2d6a4f', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 600 },
   msg:     { padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 14 },
   row:     { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14px 0', borderBottom: '1px solid #f0f0f0', gap: 12 },
   name:    { fontWeight: 600, fontSize: 15, marginBottom: 4 },
@@ -27,9 +17,6 @@ const s = {
   badge:   { display: 'inline-block', fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600 },
   actions: { display: 'flex', gap: 8, flexShrink: 0 },
   smBtn:   { fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 },
-  picker:    { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: 8, boxShadow: '0 4px 12px #0002', maxHeight: 220, overflowY: 'auto', zIndex: 10, marginTop: -8, marginBottom: 12 },
-  pickerRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', fontSize: 14 },
-  pickerImg: { width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0, background: '#d8f3dc', fontSize: 16 },
 };
 
 const STATUS_STYLE = {
@@ -72,123 +59,61 @@ function CancelConfirmDialog({ sub, onConfirm, onCancel }) {
 }
 
 export default function Subscriptions() {
-  const { user } = useAuth();
-  const [subscriptions, setSubscriptions] = useState([]);
+  const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  async function load() {
+    try {
+      setLoading(true);
+      const res = await api.getSubscriptions();
+      setSubs(res.data || []);
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Failed to load subscriptions' });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_URL}/api/subscriptions`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        if (!res.ok) throw new Error('Failed to load subscriptions');
-        const data = await res.json();
-        if (!cancelled) setSubscriptions(data.subscriptions || []);
-      } catch (err) {
-        if (!cancelled) setError(err.message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.token]);
+  }, []);
 
-  if (loading) return <div className="p-6">Loading subscriptions…</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
+  async function handleAction(id, action) {
+    setMsg(null);
+    try {
+      if (action === 'pause') await api.pauseSubscription(id);
+      if (action === 'resume') await api.resumeSubscription(id);
+      await load();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || `Failed to ${action} subscription` });
+    }
+  }
+
+  async function confirmCancel() {
+    const target = cancelTarget;
+    setCancelTarget(null);
+    if (!target) return;
+    setMsg(null);
+    try {
+      await api.cancelSubscription(target.id);
+      await load();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Failed to cancel subscription' });
+    }
+  }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Subscriptions</h1>
-      {subscriptions.length === 0 ? (
-        <p className="text-gray-500">You have no active subscriptions.</p>
-      ) : (
-        <ul className="space-y-4">
-          {subscriptions.map((sub) => {
-            const total = mul(sub.product_price, sub.quantity);
-            return (
-              <li
-                key={sub.id}
-                className="border rounded-lg p-4 flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-semibold">{sub.product_name}</p>
-                  <p className="text-sm text-gray-500">
-                    {formatXlm(sub.product_price)} XLM × {sub.quantity}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono">{formatXlm(total)} XLM</p>
-                  <Link
-                    to={`/subscriptions/${sub.id}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Manage
-                  </Link>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
     <div style={s.page}>
       <div style={s.title}>🔄 Subscriptions</div>
-      <div style={s.sub}>Set up recurring orders for your favourite products</div>
+      <div style={s.sub}>Your recurring orders for your favourite products</div>
 
-      <div style={s.card}>
-        <h3 style={{ marginBottom: 16, color: '#333' }}>New Subscription</h3>
-        {msg && (
-          <div style={{ ...s.msg, background: msg.type === 'ok' ? '#d8f3dc' : '#fee', color: msg.type === 'ok' ? '#2d6a4f' : '#c0392b' }}>
-            {msg.text}
-          </div>
-        )}
-        <form onSubmit={handleCreate}>
-          <label style={s.label}>Product</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              style={s.input} type="text" required autoComplete="off"
-              placeholder="Search for a product…"
-              value={productQuery}
-              onChange={e => {
-                setProductQuery(e.target.value);
-                setSelectedProduct(null);
-                setForm(f => ({ ...f, product_id: '' }));
-              }}
-            />
-            {productResults.length > 0 && (
-              <div style={s.picker}>
-                {productResults.map(p => (
-                  <div key={p.id} style={s.pickerRow} onClick={() => pickProduct(p)}>
-                    {p.image_url
-                      ? <img src={p.image_url} alt={p.name} style={s.pickerImg} />
-                      : <div style={{ ...s.pickerImg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🥬</div>
-                    }
-                    <span>{p.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <label style={s.label}>Quantity</label>
-          <input
-            style={s.input} type="number" min="1" required
-            value={form.quantity}
-            onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-          />
-          <label style={s.label}>Frequency</label>
-          <select style={s.input} value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}>
-            {FREQUENCIES.map(fr => <option key={fr} value={fr}>{FREQ_LABEL[fr]}</option>)}
-          </select>
-          <button style={s.btn} type="submit">Subscribe</button>
-        </form>
-      </div>
+      {msg && (
+        <div style={{ ...s.msg, background: msg.type === 'ok' ? '#d8f3dc' : '#fee', color: msg.type === 'ok' ? '#2d6a4f' : '#c0392b' }}>
+          {msg.text}
+        </div>
+      )}
 
       <div style={s.card}>
         <h3 style={{ marginBottom: 16, color: '#333' }}>My Subscriptions ({subs.length})</h3>
