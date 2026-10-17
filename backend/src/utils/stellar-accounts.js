@@ -8,15 +8,8 @@ const crypto = require('crypto');
 const bip39 = require('bip39');
 const StellarHDWallet = require('stellar-hd-wallet');
 const config = require('../config');
-const { StellarSdk, server, networkPassphrase } = require('./stellar-config');
+const { StellarSdk, isTestnet, server, networkPassphrase } = require('./stellar-config');
 const { decrypt } = require('./crypto');
-const config = require('../config');
-
-// In-memory cache: publicKey -> { federationAddress, expiresAt }
-const _federationCache = new Map();
-const FEDERATION_TTL_MS = 10 * 60 * 1000;
-const _resolveCache = new Map();
-const RESOLVE_TTL_MS = 5 * 60 * 1000;
 
 // In-memory caches for federation lookups.
 const _federationCache = new Map();
@@ -72,12 +65,6 @@ function decryptAndDeriveKeypair(encryptedSeedPhrase) {
 /**
  * @returns {{ publicKey: string, secretKey: string }}
  */
-const config = require('../config');
-const { isTestnet, server, networkPassphrase } = require('./stellar-config');
-
-// In-memory cache: publicKey -> { federationAddress, expiresAt }
-const _federationCache = new Map();
-const FEDERATION_TTL_MS = 10 * 60 * 1000;
 function createRandomKeypair() {
   if (StellarSdk.Keypair && typeof StellarSdk.Keypair.random === 'function') {
     const keypair = StellarSdk.Keypair.random();
@@ -101,9 +88,6 @@ function createWallet() {
 
 function createWalletFromMnemonic() {
   const mnemonic = bip39.generateMnemonic(256);
-  const keypair = deriveKeypairFromWallet(mnemonic);
-  const wallet = StellarHDWallet.fromMnemonic(mnemonic);
-  const keypair = StellarSdk.Keypair.fromSecret(wallet.getSecret(0));
   const wallet = StellarHDWallet && typeof StellarHDWallet.fromMnemonic === 'function'
     ? StellarHDWallet.fromMnemonic(mnemonic)
     : { getSecret: () => crypto.randomBytes(32).toString('hex') };
@@ -115,7 +99,6 @@ function createWalletFromMnemonic() {
 
 function deriveKeypairFromMnemonic(mnemonic) {
   if (!bip39.validateMnemonic(mnemonic)) throw new Error('Invalid mnemonic phrase');
-  const keypair = deriveKeypairFromWallet(mnemonic);
   const wallet = StellarHDWallet && typeof StellarHDWallet.fromMnemonic === 'function'
     ? StellarHDWallet.fromMnemonic(mnemonic)
     : { getSecret: () => crypto.randomBytes(32).toString('hex') };
@@ -226,13 +209,6 @@ async function lookupFederationAddress(publicKey) {
   const cached = _federationCache.get(publicKey);
   if (cached && Date.now() < cached.expiresAt) return cached.federationAddress;
 
-  try {
-    const record = await StellarSdk.FederationServer.resolve(publicKey);
-    const federationAddress = record.stellar_address || null;
-    _federationCache.set(publicKey, {
-      federationAddress,
-      expiresAt: Date.now() + FEDERATION_TTL_MS,
-    });
   const federationResolver = StellarSdk.FederationServer && StellarSdk.FederationServer.resolve;
   if (!federationResolver) {
     _federationCache.set(publicKey, { federationAddress: null, expiresAt: Date.now() + FEDERATION_TTL_MS });
@@ -252,17 +228,6 @@ async function lookupFederationAddress(publicKey) {
     return null;
   }
 }
-
-class FederationError extends Error {
-  constructor(message, code) {
-    super(message);
-    this.name = 'FederationError';
-    this.code = code;
-  }
-}
-
-const _resolveCache = new Map();
-const RESOLVE_TTL_MS = 5 * 60 * 1000;
 
 async function resolveFederationAddress(address, db) {
   if (!address || !address.includes('*')) return { publicKey: address, memo: null };
@@ -300,18 +265,10 @@ async function resolveFederationAddress(address, db) {
     if (!record.account_id) {
       throw new FederationError('No account_id in federation response', 'federation_unreachable');
     }
-    if (!record.account_id) {
-      throw new FederationError('No account_id in federation response', 'federation_unreachable');
-    }
     publicKey = record.account_id;
     memo = record.memo || null;
   }
 
-  if (!StellarSdk.StrKey.isValidEd25519PublicKey(publicKey)) {
-    throw new FederationError(
-      `Resolved address is not a valid Stellar public key: ${publicKey}`,
-      'invalid_resolved_address'
-    );
   const isValidPublicKey =
     StellarSdk.StrKey && typeof StellarSdk.StrKey.isValidEd25519PublicKey === 'function'
       ? StellarSdk.StrKey.isValidEd25519PublicKey(publicKey)
@@ -328,7 +285,6 @@ async function resolveFederationAddress(address, db) {
 module.exports = {
   decryptAndDeriveKeypair,
   FederationError,
-  decryptAndDeriveKeypair,
   createWallet,
   createWalletFromMnemonic,
   deriveKeypairFromMnemonic,
@@ -340,5 +296,4 @@ module.exports = {
   mergeAccount,
   lookupFederationAddress,
   resolveFederationAddress,
-  FederationError,
 };

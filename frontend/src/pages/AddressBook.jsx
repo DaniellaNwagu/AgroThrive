@@ -39,6 +39,13 @@ const EMPTY_FORM = { label: '', street: '', city: '', country: '', postal_code: 
 function AddressFormModal({ initial, onSave, onCancel, loading }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const isEdit = Boolean(initial);
+  const modalRef = React.useRef(null);
+  const triggerElementRef = React.useRef(document.activeElement);
+
+  React.useEffect(() => {
+    const triggerElement = triggerElementRef.current;
+    return () => { triggerElement?.focus?.(); };
+  }, []);
 
   React.useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onCancel(); }
@@ -46,14 +53,37 @@ function AddressFormModal({ initial, onSave, onCancel, loading }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onCancel]);
 
+  const handleKeyDown = React.useCallback((e) => {
+    if (e.key !== 'Tab') return;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll(
+      'input, select, button, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }, []);
+
   function handleSubmit(e) {
     e.preventDefault();
     onSave(form);
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="addr-modal-title" style={s.overlay}>
-      <div style={s.modal}>
+    <div role="dialog" aria-modal="true" aria-labelledby="addr-modal-title" style={s.overlay} onKeyDown={handleKeyDown}>
+      <div ref={modalRef} style={s.modal}>
         <div id="addr-modal-title" style={s.modalTitle}>{isEdit ? 'Edit Address' : 'Add New Address'}</div>
         <form onSubmit={handleSubmit}>
           <label style={s.label} htmlFor="addr-label">Label (e.g., Home, Work)</label>

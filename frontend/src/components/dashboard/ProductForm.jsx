@@ -160,6 +160,14 @@ export default function ProductForm({ harvestBatches, onProductAdded }) {
     e.preventDefault();
     setMsg(null);
     const newErrors = {};
+    const parsedPrice = parseFloat(form.price);
+    if (form.price === '' || Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      newErrors.price = 'Price must be a positive number';
+    }
+    const parsedQuantity = parseInt(form.quantity, 10);
+    if (form.quantity === '' || Number.isNaN(parsedQuantity) || parsedQuantity < 0 || String(parsedQuantity) !== String(form.quantity).trim()) {
+      newErrors.quantity = 'Quantity must be a non-negative whole number';
+    }
     if (form.is_preorder) {
       if (!form.preorder_delivery_date) {
         newErrors.preorder_delivery_date = 'Date must be in YYYY-MM-DD format';
@@ -231,7 +239,19 @@ export default function ProductForm({ harvestBatches, onProductAdded }) {
         {[['name', 'Product Name', 'prod-name'], ['price', 'Price (XLM)', 'prod-price'], ['quantity', 'Quantity', 'prod-qty'], ['unit', 'Unit (kg, bunch, etc.)', 'prod-unit']].map(([key, label, id]) => (
           <div key={key}>
             <label style={s.label} htmlFor={id}>{label}</label>
-            <input id={id} style={s.input} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} required={key !== 'unit'} />
+            <input
+              id={id}
+              style={formErrors[key] ? s.inputErr : s.input}
+              value={form[key]}
+              onChange={e => {
+                setForm({ ...form, [key]: e.target.value });
+                if (formErrors[key]) setFormErrors(fe => ({ ...fe, [key]: undefined }));
+              }}
+              required={key !== 'unit'}
+              aria-invalid={!!formErrors[key]}
+              aria-describedby={formErrors[key] ? `${id}-err` : undefined}
+            />
+            {formErrors[key] && <div id={`${id}-err`} style={s.fieldErr} role="alert">{formErrors[key]}</div>}
             {key === 'price' && usd(parseFloat(form.price)) && (
               <div style={{ fontSize: 12, color: '#2d6a4f', marginBottom: 4 }}>{usd(parseFloat(form.price))} USD</div>
             )}

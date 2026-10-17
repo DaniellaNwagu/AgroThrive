@@ -133,19 +133,19 @@ router.get('/users', async (req, res) => {
 router.get('/orders', async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 20));
-  
+
   const offset = (page - 1) * limit;
-  
+
   // Get total count
   const countResult = (await db.query('SELECT COUNT(*) as count FROM orders')).rows[0];
   const total = Number(countResult.count);
   const pages = Math.ceil(total / limit);
-  
+
   // Get paginated data
   const { rows: orders } = await db.query(`
-    SELECT 
-      o.id, 
-      o.buyer_id, 
+    SELECT
+      o.id,
+      o.buyer_id,
       b.name AS buyer_name,
       o.product_id,
       p.name AS product_name,
@@ -159,7 +159,7 @@ router.get('/orders', async (req, res) => {
     ORDER BY o.created_at DESC
     LIMIT $1 OFFSET $2
   `, [limit, offset]);
-  
+
   res.json({
     data: orders,
     pagination: {
@@ -174,12 +174,12 @@ router.get('/orders', async (req, res) => {
 // DELETE /api/admin/users/:id - deactivate user
 router.delete('/users/:id', async (req, res) => {
   const userId = req.params.id;
-  
+
   const user = (await db.query('SELECT * FROM users WHERE id = $1', [userId])).rows[0];
   if (!user) return res.status(404).json({ error: 'User not found' });
-  
+
   await db.query('UPDATE users SET active = 0 WHERE id = $1', [userId]);
-  
+
   res.json({ message: 'User deactivated successfully' });
 });
 
@@ -192,7 +192,7 @@ router.get('/stats', async (req, res) => {
   const totalRevenue = (
     await db.query("SELECT COALESCE(SUM(total_price), 0) as total FROM orders WHERE status = $1", ['paid'])
   ).rows[0].total;
-  
+
   res.json({
     totalUsers,
     totalProducts,
@@ -238,7 +238,6 @@ router.get('/analytics/summary', async (req, res) => {
     LIMIT 5
   `, [since]);
 
-  res.json({ gmv, conversion, topProducts });
   // Daily active users: distinct buyers + farmers touched by orders each day
   const { rows: dailyActiveUsers } = await db.query(`
     SELECT day, COUNT(DISTINCT user_id) AS active_users
@@ -285,7 +284,7 @@ router.get('/failed-emails', async (req, res) => {
 // Platform-wide Creator Earnings totals + a daily time-series breakdown,
 // aggregated from the creator_earnings_ledger table populated by
 // jobs/creatorEarningsMonitor.js.
-router.get('/analytics/creator-earnings', auth, requireAdmin, async (req, res) => {
+router.get('/analytics/creator-earnings', async (req, res) => {
   const { rows: totalsRows } = await db.query(
     `SELECT
        COALESCE(SUM(CASE WHEN event_type = 'credit' THEN amount ELSE 0 END), 0) AS total_credited,
