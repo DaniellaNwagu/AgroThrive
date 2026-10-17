@@ -2,9 +2,12 @@
  * Tests for backend/src/routes/market.js
  * Covers: XLM/USDC order book endpoint (with caching and error fallback)
  * and product QR code generation.
- * Closes #1010
+ * Closes #1010, #122
  */
+jest.mock('qrcode', () => ({ toBuffer: jest.fn() }));
+
 const { request, app, mockQuery } = require('./setup');
+const QRCode = require('qrcode');
 
 // ============================================================================
 // GET /api/market/xlm-usdc
@@ -64,39 +67,61 @@ describe('GET /api/market/xlm-usdc', () => {
 // GET /api/market/:id/qr  (product QR code)
 // ============================================================================
 describe('GET /api/market/:id/qr', () => {
-  it('returns a PNG QR code for a known product', async () => {
-    // market.js uses db.prepare (legacy SQLite API) for the product lookup
-    const mockDb = jest.requireMock('../src/db/schema');
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue({ id: 42 }) });
+  const ORIGINAL_FRONTEND_URL = process.env.FRONTEND_URL;
+  const ORIGINAL_FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
 
-    const res = await request(app).get('/api/market/42/qr');
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toMatch(/image\/png/);
+  afterEach(() => {
+    if (ORIGINAL_FRONTEND_URL === undefined) delete process.env.FRONTEND_URL;
+    else process.env.FRONTEND_URL = ORIGINAL_FRONTEND_URL;
+    if (ORIGINAL_FRONTEND_ORIGIN === undefined) delete process.env.FRONTEND_ORIGIN;
+    else process.env.FRONTEND_ORIGIN = ORIGINAL_FRONTEND_ORIGIN;
   });
 
-  it('returns 404 for an unknown product', async () => {
-    const mockDb = jest.requireMock('../src/db/schema');
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(undefined) });
+  it('returns 404 not_found for an unknown product', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app).get('/api/market/9999/qr');
     expect(res.status).toBe(404);
     expect(res.body.code).toBe('not_found');
   });
 
-  it('is publicly accessible without authentication', async () => {
-    const mockDb = jest.requireMock('../src/db/schema');
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue({ id: 1 }) });
-
-    const res = await request(app).get('/api/market/1/qr');
-    expect(res.status).toBe(200);
-  });
-
-  it('sets cache-control header on QR code response', async () => {
-    const mockDb = jest.requireMock('../src/db/schema');
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue({ id: 7 }) });
+  it('returns a PNG QR code for a known product', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 7 }] });
+    QRCode.toBuffer.mockResolvedValueOnce(Buffer.from('fake-png-data'));
 
     const res = await request(app).get('/api/market/7/qr');
     expect(res.status).toBe(200);
-    expect(res.headers['cache-control']).toMatch(/max-age=3600/);
+    expect(res.headers['content-type']).toMatch(/image\/png/);
+    expect(res.headers['cache-control']).toMatch(/public, max-age=3600/);
+    expect(res.headers['content-disposition']).toMatch(/product-7-qr\.png/);
+  });
+
+  it('builds the QR target URL without a double slash when FRONTEND_URL has a trailing slash', async () => {
+    process.env.FRONTEND_URL = 'https://example.com/';
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 7 }] });
+    QRCode.toBuffer.mockResolvedValueOnce(Buffer.from('fake-png-data'));
+
+    const res = await request(app).get('/api/market/7/qr');
+    expect(res.status).toBe(200);
+    const [calledUrl] = QRCode.toBuffer.mock.calls[0];
+    expect(calledUrl).toBe('https://example.com/product/7');
+    expect(calledUrl).not.toMatch(/\/\/product/);
+  });
+
+  it('returns 500 qr_error when QRCode.toBuffer rejects', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 7 }] });
+    QRCode.toBuffer.mockRejectedValueOnce(new Error('render failed'));
+
+    const res = await request(app).get('/api/market/7/qr');
+    expect(res.status).toBe(500);
+    expect(res.body.code).toBe('qr_error');
+  });
+
+  it('is publicly accessible without authentication', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+    QRCode.toBuffer.mockResolvedValueOnce(Buffer.from('fake-png-data'));
+
+    const res = await request(app).get('/api/market/1/qr');
+    expect(res.status).toBe(200);
   });
 });
