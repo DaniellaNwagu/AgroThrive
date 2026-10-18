@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Check browser matrix is wired up
+        run: node scripts/check-e2e-matrix.js
+
       - name: Build
         run: npm run build
 
@@ -62,6 +65,9 @@ jobs:
           - browser: webkit
             os: ubuntu-latest
             project: webkit
+          - browser: edge
+            os: ubuntu-latest
+            project: edge
           # Mobile emulation (runs on ubuntu via Playwright device emulation)
           - browser: mobile-chrome-android
             os: ubuntu-latest
@@ -95,7 +101,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps ${{ matrix.browser == 'mobile-chrome-android' && 'chromium' || matrix.browser == 'mobile-safari-ios' && 'webkit' || matrix.browser == 'mobile-safari-ipad' && 'webkit' || matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser == 'mobile-chrome-android' && 'chromium' || matrix.browser == 'mobile-safari-ios' && 'webkit' || matrix.browser == 'mobile-safari-ipad' && 'webkit' || matrix.browser == 'edge' && 'msedge' || matrix.browser }}
 
       - name: Download build artifact
         uses: actions/download-artifact@v4

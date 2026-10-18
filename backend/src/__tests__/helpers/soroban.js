@@ -114,14 +114,26 @@ function _isSandboxRunning() {
 async function _waitForRpc(timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    const remaining = deadline - Date.now();
     try {
-      await sorobanServer.getLatestLedger();
+      await _withTimeout(sorobanServer.getLatestLedger(), remaining);
       return; // responsive
     } catch {
-      await new Promise((r) => setTimeout(r, 1_000));
+      await new Promise((r) => setTimeout(r, Math.min(1_000, Math.max(remaining, 0))));
     }
   }
   throw new Error(`Soroban RPC at ${LOCAL_SOROBAN_RPC} did not become ready within ${timeoutMs}ms`);
+}
+
+/** Rejects if `promise` has not settled within `ms` — guards against a hung request. */
+function _withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------

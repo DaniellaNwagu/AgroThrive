@@ -137,13 +137,25 @@ describe('setupSandbox', () => {
 
     // getLatestLedger always rejects
     const StellarSdkMod = require('@stellar/stellar-sdk');
-    StellarSdkMod.SorobanRpc.Server.mock.instances[0]?.getLatestLedger?.mockRejectedValue(
-      new Error('connection refused')
-    );
+    const sorobanMock = StellarSdkMod.SorobanRpc.Server.mock.results[0]?.value;
+    sorobanMock.getLatestLedger.mockRejectedValue(new Error('connection refused'));
 
     await expect(setupSandbox({ timeoutMs: 100 })).rejects.toThrow(
       /did not become ready/
     );
+  });
+
+  test('rejects with a timeout-naming message when the RPC never becomes ready', async () => {
+    const { execSync: exec, spawnSync: spawn } = require('child_process');
+    exec.mockReturnValue('false\n');
+    spawn.mockReturnValue({ status: 0, stdout: 'cid\n', stderr: '' });
+
+    // getLatestLedger hangs forever — never resolves or rejects.
+    const StellarSdkMod = require('@stellar/stellar-sdk');
+    const sorobanMock = StellarSdkMod.SorobanRpc.Server.mock.results[0]?.value;
+    sorobanMock.getLatestLedger.mockImplementation(() => new Promise(() => {}));
+
+    await expect(setupSandbox({ timeoutMs: 100 })).rejects.toThrow(/timeoutMs|100ms/);
   });
 });
 
@@ -184,6 +196,27 @@ describe('teardownSandbox', () => {
       expect.stringContaining('docker stop'),
       expect.any(Object)
     );
+  });
+
+  test('is a no-op when called without a prior setupSandbox call', async () => {
+    jest.resetModules();
+    jest.mock('@stellar/stellar-sdk', () => {
+      const actual = jest.requireActual('@stellar/stellar-sdk');
+      return {
+        ...actual,
+        Horizon: { Server: jest.fn().mockImplementation(() => ({ loadAccount: jest.fn() })) },
+        SorobanRpc: { Server: jest.fn().mockImplementation(() => ({ getLatestLedger: jest.fn() })) },
+      };
+    });
+    jest.mock('child_process', () => ({ execSync: jest.fn(), spawnSync: jest.fn() }));
+
+    const mod = require('./soroban');
+    const { execSync: exec, spawnSync: spawn } = require('child_process');
+
+    await mod.teardownSandbox();
+
+    expect(exec).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
   });
 
   test('is a no-op when sandbox was already running before setupSandbox', async () => {
