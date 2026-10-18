@@ -5,7 +5,11 @@ export function addRecentlyViewed(product) {
   const list = getRecentlyViewed();
   const filtered = list.filter(p => p.id !== product.id);
   const updated = [{ id: product.id, name: product.name, image_url: product.image_url || product.image, price: product.price }, ...filtered].slice(0, MAX_ITEMS);
-  localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(updated));
+  } catch {
+    // Storage unavailable (quota exceeded, private mode, etc.) — fail silently.
+  }
 }
 
 export function getRecentlyViewed() {
