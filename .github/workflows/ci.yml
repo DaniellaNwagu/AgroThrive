@@ -116,6 +116,60 @@ jobs:
           path: frontend/dist/assets/*.js
           retention-days: 30
 
+  frontend-static-checks:
+    name: Frontend Static Checks (i18n sync, bundle size)
+    runs-on: ubuntu-latest
+    # Only meaningful on PRs, and only when frontend code actually changed —
+    # a backend-only PR shouldn't have to wait on this job (#97).
+    if: github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect frontend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+
+      - name: Setup Node.js
+        if: steps.changes.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache node_modules
+        if: steps.changes.outputs.frontend == 'true'
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
+
+      - name: Install dependencies
+        if: steps.changes.outputs.frontend == 'true'
+        run: npm ci --legacy-peer-deps
+
+      - name: Check i18n translation sync
+        if: steps.changes.outputs.frontend == 'true'
+        run: node scripts/check-i18n-sync.js
+
+      - name: Build production bundle
+        if: steps.changes.outputs.frontend == 'true'
+        run: npm run build
+
+      - name: Check bundle size budgets
+        if: steps.changes.outputs.frontend == 'true'
+        env:
+          BUNDLE_INITIAL_BUDGET_KB: 500
+          BUNDLE_TOTAL_BUDGET_KB: 5000
+        run: node scripts/check-bundle-size.js
+
   smoke-test-testnet:
     name: Escrow Testnet Smoke Test
     # Only on merges to main — this touches live Stellar Testnet, not on every PR.
