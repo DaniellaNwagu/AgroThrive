@@ -8,6 +8,7 @@ import { useCompare } from "../context/CompareContext";
 import { useXlmRate } from "../utils/useXlmRate";
 import { useDebounce } from "../utils/useDebounce";
 import { getRecentlyViewed } from "../utils/recentlyViewed";
+import { GRADE_COLORS } from "../utils/gradeColors";
 import { saveSnapshot, saveScrollPosition, readSnapshot, clearSnapshot } from "../utils/marketplaceSnapshot";
 import StarRating from "../components/StarRating";
 import SkeletonProductCard from "../components/SkeletonProductCard";
@@ -35,14 +36,6 @@ const SEARCH_DEBOUNCE_MS = 300;
 const MAX_PRICE = 500;
 const ALL_ALLERGENS = ["gluten", "nuts", "dairy", "eggs", "soy", "shellfish"];
 const GRADES = ["A", "B", "C", "Ungraded"];
-const GRADE_COLORS = {
-  A: { background: "#d8f3dc", color: "#2d6a4f" },
-  B: { background: "#fff3cd", color: "#856404" },
-  // #7a3d00 on #ffe0b2 → 6.64:1 (was #a85d00 → 3.91:1, failed WCAG AA)
-  C: { background: "#ffe0b2", color: "#7a3d00" },
-  Ungraded: { background: "#e0e0e0", color: "#555" },
-};
-
 const s = {
   page: { maxWidth: 1100, margin: "0 auto", padding: 24, paddingBottom: 140 },
   title: { fontSize: 24, fontWeight: 700, color: "#2d6a4f", marginBottom: 8 },
