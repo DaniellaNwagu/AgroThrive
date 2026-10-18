@@ -3,6 +3,46 @@ import { getErrorMessage } from '../utils/errorMessages';
 
 const BASE = '/api/v1';
 
+// #117: default client-side request timeout. Without this, a hung backend
+// (or a stalled Stellar-dependent route) left the UI loading forever with
+// no way to cancel — errorMessages.js already had a 'timeout|timed out'
+// entry implying this was expected, but nothing in the client could
+// actually produce one.
+const DEFAULT_TIMEOUT_MS = 15000;
+
+/**
+ * Builds an AbortSignal that fires on whichever comes first: the given
+ * timeout, or an abort on `externalSignal` (a caller-supplied signal,
+ * still honoured independently of the timeout). Calling `abort(reason)`
+ * with an Error sets `signal.reason` to that exact Error — fetch's
+ * rejection *is* that reason in current runtimes — so the timeout path
+ * naturally produces an Error whose message contains "timed out",
+ * matching errorMessages.js's existing timeout entry, with no separate
+ * AbortError-to-message translation needed. `cleanup()` must be called
+ * in a `finally` so a resolved request never leaves a stray timer that
+ * could abort something unrelated later.
+ */
+function withTimeout(timeoutMs, externalSignal) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new Error(`Request timed out after ${timeoutMs}ms`));
+  }, timeoutMs);
+
+  const onExternalAbort = () => controller.abort(externalSignal.reason);
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort(externalSignal.reason);
+    else externalSignal.addEventListener('abort', onExternalAbort);
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup() {
+      clearTimeout(timer);
+      if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+    },
+  };
+}
+
 // Error message handed to callers when the refresh token is gone or rejected.
 // The wording is what errorMessages.js maps to the user-facing session-expired copy.
 const SESSION_EXPIRED = 'Session expired';
@@ -163,7 +203,11 @@ function endSession() {
   if (logoutCallback) logoutCallback();
 }
 
-async function request(path, options = {}, retry = true, csrfRetry = true) {
+// Exported (in addition to being used internally by every `api.*` method)
+// so tests can exercise its timeout/abort behavior directly without
+// needing a specific endpoint wrapper that happens to forward
+// { timeoutMs, signal } through.
+export async function request(path, options = {}, retry = true, csrfRetry = true) {
   const method = (options.method || 'GET').toUpperCase();
   const needsCsrf = MUTATING.includes(method) && !CSRF_EXEMPT.includes(path);
 
@@ -172,6 +216,7 @@ async function request(path, options = {}, retry = true, csrfRetry = true) {
   const isFormData = options.body instanceof FormData;
 
   if (loadingCallback && !options.silent) loadingCallback(true);
+  const { signal, cleanup } = withTimeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, options.signal);
   try {
     const headers = {};
     if (!isFormData) headers['Content-Type'] = 'application/json';
@@ -184,7 +229,7 @@ async function request(path, options = {}, retry = true, csrfRetry = true) {
       credentials: 'include',
       headers,
       body: isFormData ? options.body : options.body ? JSON.stringify(options.body) : undefined,
-      signal: options.signal,
+      signal,
     });
 
     if (res.status === 401 && retry) {
@@ -211,6 +256,7 @@ async function request(path, options = {}, retry = true, csrfRetry = true) {
     }
     return data;
   } finally {
+    cleanup();
     if (loadingCallback && !options.silent) loadingCallback(false);
   }
 }
