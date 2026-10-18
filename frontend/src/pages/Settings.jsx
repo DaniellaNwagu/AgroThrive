@@ -158,7 +158,7 @@ function PasswordChangeForm() {
   );
 }
 
-function SettingsAccountBody() {
+function SettingsAccountBody({ showToast }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -225,10 +225,23 @@ function SettingsAccountBody() {
       navigate('/login', { replace: true });
     } catch (e) {
       if (e.status === 409 && e.data?.code === 'balance_warning') {
-        setBalanceInfo({ balance: e.data.balance, publicKey: e.data.publicKey });
-        setStep('balance_warning');
+        // The balance comes from the error payload rather than a separate
+        // fetch. Only treat it as usable when it's actually a finite number —
+        // an undefined/NaN balance here must not render the balance warning
+        // with a bogus amount.
+        const balance = Number(e.data.balance);
+        if (Number.isFinite(balance)) {
+          setBalanceInfo({ balance, publicKey: e.data.publicKey });
+          setStep('balance_warning');
+        } else {
+          const msg = 'Could not determine your wallet balance. Please try again.';
+          setError(msg);
+          if (typeof showToast === 'function') showToast('err', msg);
+        }
       } else {
-        setError(e.message || 'Deletion failed. Please try again.');
+        const msg = e.message || 'Deletion failed. Please try again.';
+        setError(msg);
+        if (typeof showToast === 'function') showToast('err', msg);
       }
     } finally {
       setDeleting(false);
@@ -364,7 +377,7 @@ function SettingsAccountBody() {
               </>
             )}
 
-            {step === 'balance_warning' && balanceInfo && (
+            {step === 'balance_warning' && balanceInfo && Number.isFinite(balanceInfo.balance) && (
               <>
                 <div style={s.modalTitle} id="modal-title">Wallet Balance Detected</div>
                 <div style={s.balanceBox}>
@@ -663,7 +676,7 @@ export default function Settings() {
       {user ? (
         <>
           <ProfileSettings showToast={showToast} />
-          <SettingsAccountBody />
+          <SettingsAccountBody showToast={showToast} />
           <PasswordChangeForm />
           <TwoFactorAuth />
           <SeedPhraseBackup />

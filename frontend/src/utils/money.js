@@ -89,6 +89,49 @@ export function formatXlm(value, locale) {
   return trimmed ? `${wholeFormatted}.${trimmed}` : wholeFormatted;
 }
 
+// Base reserve Stellar locks on every account, mirrored from
+// backend/src/routes/wallet.js's BASE_RESERVE_XLM so the two stay in sync.
+export const BASE_RESERVE_XLM = 1;
+
+// Stellar's real per-subentry reserve (trustlines, offers, signers, data
+// entries, ...) is 0.5 XLM each. Nothing in this codebase tracked subentries
+// before this helper, so this constant documents the rule being applied
+// rather than reusing an existing one.
+export const SUBENTRY_RESERVE_XLM = 0.5;
+
+/**
+ * Pure helper for the Wallet send form's spendable-balance check.
+ *
+ * Returns the amount of XLM (as a number) that may be withdrawn from an
+ * account without dropping it below Stellar's minimum reserve. The base
+ * reserve is always withheld; each subentry (trustline, offer, signer, ...)
+ * withholds an additional SUBENTRY_RESERVE_XLM. The result is never negative.
+ *
+ * Arithmetic is done in integer stroops (via toStroops/fromStroops) so the
+ * equality boundary (amount === spendable) is not corrupted by floating
+ * point error.
+ *
+ * @param {string|number} balance - total XLM balance
+ * @param {number} [subentries] - number of subentries on the account
+ * @returns {number} spendable XLM amount, >= 0
+ */
+export function calculateSpendableBalance(balance, subentries = 0) {
+  const numBalance = Number(balance);
+  if (!Number.isFinite(numBalance)) return 0;
+
+  const safeSubentries = Number.isFinite(Number(subentries)) && Number(subentries) > 0
+    ? Number(subentries)
+    : 0;
+  const reserve = BASE_RESERVE_XLM + safeSubentries * SUBENTRY_RESERVE_XLM;
+
+  const balanceStroops = toStroops(numBalance.toFixed(XLM_DECIMALS));
+  const reserveStroops = toStroops(reserve.toFixed(XLM_DECIMALS));
+  const spendableStroops = balanceStroops - reserveStroops;
+
+  if (spendableStroops <= 0n) return 0;
+  return Number(fromStroops(spendableStroops));
+}
+
 /**
  * Format a fiat amount with 2 decimal places.
  * @param {number|string} value

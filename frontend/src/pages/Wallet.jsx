@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { api } from '../api/client';
+import { calculateSpendableBalance } from '../utils/money';
 import { useAuth } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
 import { getStellarErrorMessage } from '../utils/stellarErrors';
@@ -160,7 +161,6 @@ export default function Wallet() {
       .finally(() => setClaimableLoading(false));
   }, []);
 
-  const connectStream = useCallback(async () => {
   const loadStreams = useCallback(() => {
     if (typeof api.getPaymentStreams !== 'function') return;
     api.getPaymentStreams()
@@ -168,7 +168,7 @@ export default function Wallet() {
       .catch(() => {});
   }, []);
 
-  const connectStream = useCallback(() => {
+  const connectStream = useCallback(async () => {
     if (unmounted.current || typeof EventSource === 'undefined') return;
     if (typeof api.getWalletStreamUrl !== 'function') return;
     let url;
@@ -268,7 +268,9 @@ export default function Wallet() {
     }
   }
 
-  const availableBalance = wallet ? (wallet.availableBalance ?? Math.max(0, wallet.balance - 1)) : 0;
+  const availableBalance = wallet
+    ? (wallet.availableBalance ?? calculateSpendableBalance(wallet.balance, wallet.subentries))
+    : 0;
   const sendAmount = parseFloat(sendForm.amount);
   const sendExceedsBalance = sendForm.amount !== '' && !isNaN(sendAmount) && sendAmount > availableBalance;
 
@@ -504,7 +506,7 @@ export default function Wallet() {
               </div>
             )}
             <div style={{ fontSize: 13, color: '#555', marginTop: 6 }}>
-              Available to withdraw: {wallet ? (wallet.availableBalance ?? Math.max(0, wallet.balance - 1)).toFixed(2) : '-'} XLM
+              Available to withdraw: {wallet ? (wallet.availableBalance ?? calculateSpendableBalance(wallet.balance, wallet.subentries)).toFixed(2) : '-'} XLM
             </div>
             {wallet && wallet.availableBalance && usd(wallet.availableBalance) && (
               <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
