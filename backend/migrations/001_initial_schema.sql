@@ -1,5 +1,5 @@
 -- Migration: 001_initial_schema
--- Description: Full initial schema for GoGreen
+-- Description: Full initial schema for AgroThrive
 
 CREATE TABLE IF NOT EXISTS users (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -104,8 +104,8 @@ describe('dispatchEvent — routes events to correct handler', () => {
     await _handlers.dispatchEvent(ev);
 
     expect(dbMod.query).toHaveBeenCalledWith(
-      expect.stringContaining("'credit'"),
-      expect.arrayContaining(['GCREATOR1'])
+      expect.stringContaining('INSERT INTO creator_earnings_ledger'),
+      expect.arrayContaining(['GCREATOR1', 'credit'])
     );
   });
 
@@ -278,8 +278,7 @@ describe('retry logic — exponential backoff', () => {
 
     const jobPromise = monitor.runMonitoringJob();
     for (let i = 0; i < 4; i++) {
-      jest.advanceTimersByTime(Math.min(Math.pow(2, i) * 1000, 60000));
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(Math.min(Math.pow(2, i) * 1000, 60000));
     }
     await jobPromise;
 
@@ -304,8 +303,7 @@ describe('retry logic — exponential backoff', () => {
 
     const jobPromise = monitor.runMonitoringJob();
     for (let i = 0; i < 6; i++) {
-      jest.advanceTimersByTime(Math.min(Math.pow(2, i) * 1000, 60000));
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(Math.min(Math.pow(2, i) * 1000, 60000));
     }
     await jobPromise;
 

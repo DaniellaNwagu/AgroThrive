@@ -1,4 +1,4 @@
-# GoGreen — Production Deployment Guide
+# AgroThrive — Production Deployment Guide
 
 Target OS: Ubuntu 22.04 LTS
 Backend: Express.js on port **4000**
@@ -64,8 +64,8 @@ sudo systemctl enable postgresql
 sudo systemctl start postgresql
 
 # Create database and user
-sudo -u postgres psql -c "CREATE USER gogreen WITH PASSWORD 'your_db_password';"
-sudo -u postgres psql -c "CREATE DATABASE gogreen OWNER gogreen;"
+sudo -u postgres psql -c "CREATE USER agrothrive WITH PASSWORD 'your_db_password';"
+sudo -u postgres psql -c "CREATE DATABASE agrothrive OWNER agrothrive;"
 ```
 
 ---
@@ -76,32 +76,32 @@ sudo -u postgres psql -c "CREATE DATABASE gogreen OWNER gogreen;"
 
 ```bash
 cd /var/www
-sudo mkdir -p gogreen
-sudo chown $USER:$USER gogreen
-git clone https://github.com/ITSYABOINEUTRAL/GoGreen.git gogreen
-cd gogreen
+sudo mkdir -p agrothrive
+sudo chown $USER:$USER agrothrive
+git clone https://github.com/DaniellaNwagu/AgroThrive.git agrothrive
+cd agrothrive
 ```
 
 ### Install backend dependencies
 
 ```bash
-cd /var/www/gogreen/backend
+cd /var/www/agrothrive/backend
 npm install --omit=dev
 ```
 
 ### Install frontend dependencies and build
 
 ```bash
-cd /var/www/gogreen/frontend
+cd /var/www/agrothrive/frontend
 npm install --omit=dev
 npm run build
-# Built assets are output to /var/www/gogreen/frontend/dist/
+# Built assets are output to /var/www/agrothrive/frontend/dist/
 ```
 
 ### Set up environment variables
 
 ```bash
-cd /var/www/gogreen/backend
+cd /var/www/agrothrive/backend
 cp .env.example .env
 nano .env   # fill in all required values — see Section 6
 ```
@@ -111,7 +111,7 @@ Minimum required changes for production:
 ```bash
 NODE_ENV=production
 PORT=4000
-DATABASE_URL=postgresql://gogreen:your_db_password@localhost:5432/gogreen
+DATABASE_URL=postgresql://agrothrive:your_db_password@localhost:5432/agrothrive
 JWT_SECRET=<64-byte hex — generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))">
 REFRESH_TOKEN_SECRET=<64-byte hex — same method>
 CLIENT_ORIGIN=https://yourdomain.com
@@ -127,20 +127,20 @@ STELLAR_MAINNET_CONFIRMED=true
 ### Create the logs directory
 
 ```bash
-mkdir -p /var/www/gogreen/logs
+mkdir -p /var/www/agrothrive/logs
 ```
 
 ### Run database migrations
 
 ```bash
-cd /var/www/gogreen/backend
+cd /var/www/agrothrive/backend
 node migrate.js
 ```
 
 ### (Optional) Seed the admin account
 
 ```bash
-cd /var/www/gogreen/backend
+cd /var/www/agrothrive/backend
 node scripts/seed-admin.js
 # Uses ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD from .env
 # Change the admin password immediately after first login.
@@ -153,10 +153,10 @@ node scripts/seed-admin.js
 ### Start the application
 
 ```bash
-cd /var/www/gogreen
+cd /var/www/agrothrive
 pm2 start ecosystem.config.js
-pm2 list   # verify gogreen is online
-pm2 logs gogreen --lines 50   # check for startup errors
+pm2 list   # verify agrothrive is online
+pm2 logs agrothrive --lines 50   # check for startup errors
 ```
 
 ### Configure PM2 to auto-start on server reboot
@@ -175,10 +175,10 @@ pm2 save   # persists the current process list
 
 ```bash
 pm2 status                          # overview of all processes
-pm2 logs gogreen        # tail live logs
-pm2 reload gogreen      # zero-downtime reload
-pm2 restart gogreen     # full restart
-pm2 stop gogreen        # stop without removing
+pm2 logs agrothrive        # tail live logs
+pm2 reload agrothrive      # zero-downtime reload
+pm2 restart agrothrive     # full restart
+pm2 stop agrothrive        # stop without removing
 pm2 monit                           # real-time dashboard
 ```
 
@@ -189,11 +189,11 @@ pm2 monit                           # real-time dashboard
 ### Copy the config and enable the site
 
 ```bash
-sudo cp /var/www/gogreen/nginx/gogreen.conf \
-        /etc/nginx/sites-available/gogreen.conf
+sudo cp /var/www/agrothrive/nginx/agrothrive.conf \
+        /etc/nginx/sites-available/agrothrive.conf
 
-sudo ln -s /etc/nginx/sites-available/gogreen.conf \
-           /etc/nginx/sites-enabled/gogreen.conf
+sudo ln -s /etc/nginx/sites-available/agrothrive.conf \
+           /etc/nginx/sites-enabled/agrothrive.conf
 
 # Remove the default site if present
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -233,7 +233,7 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com \
   --non-interactive --agree-tos -m admin@yourdomain.com
 ```
 
-Certbot will automatically edit `/etc/nginx/sites-available/gogreen.conf`
+Certbot will automatically edit `/etc/nginx/sites-available/agrothrive.conf`
 and add the HTTPS server block. The resulting config will look like:
 
 ```nginx
@@ -274,7 +274,7 @@ sudo systemctl status certbot.timer
 
 ## 6. Environment Variables Reference
 
-All variables are set in `/var/www/gogreen/backend/.env`.
+All variables are set in `/var/www/agrothrive/backend/.env`.
 
 ### Core (Required)
 
@@ -282,7 +282,7 @@ All variables are set in `/var/www/gogreen/backend/.env`.
 |---|---|---|
 | `NODE_ENV` | `production` | Must be `production` in prod — never `development` |
 | `PORT` | `4000` | Port the Express server listens on |
-| `DATABASE_URL` | `postgresql://user:pass@localhost:5432/gogreen` | Leave unset to use SQLite (not recommended for prod) |
+| `DATABASE_URL` | `postgresql://user:pass@localhost:5432/agrothrive` | Leave unset to use SQLite (not recommended for prod) |
 | `JWT_SECRET` | _(64-byte random hex)_ | Generate: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
 | `REFRESH_TOKEN_SECRET` | _(64-byte random hex)_ | Generate same way as `JWT_SECRET`; must differ |
 
@@ -362,7 +362,7 @@ All variables are set in `/var/www/gogreen/backend/.env`.
 | Variable | Default | Notes |
 |---|---|---|
 | `ADMIN_NAME` | `Admin` | Used only by `node scripts/seed-admin.js` |
-| `ADMIN_EMAIL` | `admin@gogreen.com` | Change before running seed script |
+| `ADMIN_EMAIL` | `admin@agrothrive.com` | Change before running seed script |
 | `ADMIN_PASSWORD` | `ChangeMe1!` | **Change immediately after seeding** |
 
 ---
@@ -373,7 +373,7 @@ Use these steps to roll back to a previously released Git tag (e.g. `v1.2.3`).
 
 ```bash
 # 1. Navigate to the app root
-cd /var/www/gogreen
+cd /var/www/agrothrive
 
 # 2. Fetch the latest tags and branches from origin
 git fetch --tags origin
@@ -385,7 +385,7 @@ git tag --sort=-version:refname | head -20
 git checkout v1.2.3
 
 # 5. Install backend dependencies for this version
-cd /var/www/gogreen/backend
+cd /var/www/agrothrive/backend
 npm install --omit=dev
 
 # 6. Run any pending (or rollback) migrations
@@ -394,20 +394,20 @@ node migrate.js rollback   # roll back the most recent migration batch
 # Verify the schema is as expected before proceeding.
 
 # 7. Rebuild the frontend
-cd /var/www/gogreen/frontend
+cd /var/www/agrothrive/frontend
 npm install --omit=dev
 npm run build
 
 # 8. Reload the backend with zero downtime
-pm2 reload gogreen
+pm2 reload agrothrive
 
 # 9. Verify the application is healthy
 pm2 status
-pm2 logs gogreen --lines 50
+pm2 logs agrothrive --lines 50
 curl -s https://yourdomain.com/api/health | head -5
 
 # 10. If the reload fails, force a full restart
-pm2 restart gogreen
+pm2 restart agrothrive
 ```
 
 > **Tip:** Tag every release with `git tag v1.x.x && git push origin v1.x.x` so

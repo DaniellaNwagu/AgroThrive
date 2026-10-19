@@ -135,22 +135,25 @@ async function aggregateBatch(productIds, aggDate) {
       [aggDate, ...productIds]
     );
   } else {
-    // SQLite uses individual upserts to stay within parameter limits.
-    for (const pid of productIds) {
-      await db.query(
-        `INSERT OR REPLACE INTO product_view_summaries
-         (product_id, view_date, view_count, unique_viewers, aggregated_at)
-       SELECT product_id,
-              date($1) AS view_date,
-              COUNT(*) AS view_count,
-              COUNT(DISTINCT COALESCE(user_id, -id)) AS unique_viewers,
-              datetime('now') AS aggregated_at
-       FROM product_views
-      WHERE date(viewed_at) = $2 AND product_id = $3
-       GROUP BY product_id`,
-        [aggDate, aggDate, pid]
-      );
-    }
+    // SQLite uses individual upserts to stay within parameter limits, inside one
+    // transaction so a failure part-way through leaves no partial batch behind.
+    await db.withTransaction(async (tx) => {
+      for (const pid of productIds) {
+        await tx.query(
+          `INSERT OR REPLACE INTO product_view_summaries
+           (product_id, view_date, view_count, unique_viewers, aggregated_at)
+         SELECT product_id,
+                date($1) AS view_date,
+                COUNT(*) AS view_count,
+                COUNT(DISTINCT COALESCE(user_id, -id)) AS unique_viewers,
+                datetime('now') AS aggregated_at
+         FROM product_views
+        WHERE date(viewed_at) = $2 AND product_id = $3
+         GROUP BY product_id`,
+          [aggDate, aggDate, pid]
+        );
+      }
+    });
   }
 }
 

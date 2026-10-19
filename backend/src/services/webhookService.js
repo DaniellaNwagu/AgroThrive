@@ -37,7 +37,7 @@ async function deliverWebhook(url, secret, payload, attempt = 1) {
         "Content-Type": "application/json",
         "X-Farmers-Signature": signature,
         "X-Farmers-Event-Attempt": String(attempt),
-        "User-Agent": "GoGreen-Webhook/1.0",
+        "User-Agent": "AgroThrive-Webhook/1.0",
       },
       body: payload,
       signal: controller.signal,

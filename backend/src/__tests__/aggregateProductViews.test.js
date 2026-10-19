@@ -18,8 +18,7 @@
 jest.mock('node-cron', () => ({ schedule: jest.fn() }));
 
 jest.mock('../../src/db/schema', () => ({
-  prepare: jest.fn(),
-  transaction: jest.fn(),
+  withTransaction: jest.fn(),
   query: jest.fn(),
   isPostgres: false,
 }));
@@ -42,6 +41,18 @@ const {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
+ * Route SQLite-mode db.query calls to statement-style spies, so assertions can
+ * check the parameters each statement ran with.
+ */
+function routeSqliteQueries(distinctStmt, upsertStmt) {
+  db.query.mockImplementation(async (sql, params = []) => {
+    if (sql.includes('DISTINCT product_id')) return { rows: distinctStmt.all(...params) };
+    if (sql.includes('INSERT OR REPLACE')) return { rows: [], rowCount: upsertStmt.run(...params).changes };
+    return { rows: [], rowCount: 0 };
+  });
+}
+
+/**
  * Set up SQLite-mode mocks.
  * @param {number[]} productIds - product IDs returned by the DISTINCT query
  * @param {object}   opts
@@ -57,14 +68,10 @@ function setupSqliteMocks(productIds = [], { upsertThrows = false } = {}) {
       : jest.fn().mockReturnValue({ changes: 1 }),
   };
 
-  db.prepare.mockImplementation((sql) => {
-    if (sql.includes('DISTINCT product_id')) return distinctStmt;
-    if (sql.includes('INSERT OR REPLACE')) return upsertStmt;
-    return { run: jest.fn(), get: jest.fn(), all: jest.fn().mockReturnValue([]) };
-  });
+  routeSqliteQueries(distinctStmt, upsertStmt);
 
-  // transaction executes the callback immediately
-  db.transaction.mockImplementation((fn) => (...args) => fn(...args));
+  // withTransaction runs the batch immediately against the same db
+  db.withTransaction.mockImplementation((work) => work(db));
 
   return { distinctStmt, upsertStmt };
 }
@@ -126,7 +133,7 @@ describe('aggregateProductViews — empty dataset', () => {
     setupSqliteMocks([]);
     const result = await aggregateProductViews('2026-05-27');
     expect(result).toEqual({ date: '2026-05-27', processed: 0, skipped: 0 });
-    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.withTransaction).not.toHaveBeenCalled();
   });
 
   it('returns zero counts and does not write anything (PG)', async () => {
@@ -244,8 +251,8 @@ describe('aggregateProductViews — large-volume batching', () => {
 
     expect(result).toEqual({ date: '2026-05-27', processed: 1200, skipped: 0 });
     expect(upsertStmt.run).toHaveBeenCalledTimes(1200);
-    // transaction should have been called 3 times (once per batch)
-    expect(db.transaction).toHaveBeenCalledTimes(3);
+    // one transaction per batch
+    expect(db.withTransaction).toHaveBeenCalledTimes(3);
   });
 
   it('splits 600 products into 2 PG batches', async () => {
@@ -274,19 +281,13 @@ describe('aggregateProductViews — partial batch failure', () => {
       run: jest.fn().mockReturnValue({ changes: 1 }),
     };
 
-    db.prepare.mockImplementation((sql) => {
-      if (sql.includes('DISTINCT product_id')) return distinctStmt;
-      if (sql.includes('INSERT OR REPLACE')) return upsertStmt;
-      return { run: jest.fn(), all: jest.fn().mockReturnValue([]) };
-    });
+    routeSqliteQueries(distinctStmt, upsertStmt);
 
-    // First transaction call succeeds, second throws
-    db.transaction.mockImplementation((fn) => {
+    // First transaction succeeds, second fails (and is rolled back)
+    db.withTransaction.mockImplementation(async (work) => {
       callCount++;
-      if (callCount === 2) {
-        return () => { throw new Error('Disk full'); };
-      }
-      return (...args) => fn(...args);
+      if (callCount === 2) throw new Error('Disk full');
+      return work(db);
     });
 
     const result = await aggregateProductViews('2026-05-27');

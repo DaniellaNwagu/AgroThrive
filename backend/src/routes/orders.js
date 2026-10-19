@@ -83,7 +83,6 @@ function isFlashSaleActive(product) {
 
 async function getEffectiveUnitPrice(product, productId, quantity) {
   if (isFlashSaleActive(product)) return Number(product.flash_sale_price);
-  if (product?.price != null) return Number(product.price);
   return getTierPrice(productId, quantity);
 }
 
@@ -251,11 +250,6 @@ async function handleBundleOrder(req, res, bundle_id, address_id, coupon_code, u
       if (!stock || stock.quantity < item.quantity)
         outOfStock.push({ product_id: item.product_id, product_name: item.product_name, available: stock?.quantity ?? 0, required: item.quantity });
     }
-    if (outOfStock.length > 0) {
-      await db.query('ROLLBACK');
-      if (couponUseId != null) await releaseCoupon(appliedCoupon.id, req.user.id, couponUseId);
-      return res.status(409).json({ success: false, code: 'insufficient_stock', outOfStock });
-    }
     if (outOfStock.length > 0) return { outOfStock, orderIds: [] };
 
     const createdOrderIds = [];
@@ -269,8 +263,6 @@ async function handleBundleOrder(req, res, bundle_id, address_id, coupon_code, u
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [req.user.id, item.product_id, item.quantity, itemPrice, 'pending', address_id || null, bundle_id]
       );
-      const insertedOrderId = orderRows?.[0]?.id ?? Date.now() + Math.floor(Math.random() * 1000);
-      orderIds.push(insertedOrderId);
       createdOrderIds.push(orderRows[0].id);
     }
     return { outOfStock: [], orderIds: createdOrderIds };
@@ -281,10 +273,11 @@ async function handleBundleOrder(req, res, bundle_id, address_id, coupon_code, u
     orderIds = result.orderIds;
     const { outOfStock } = result;
     if (outOfStock.length > 0) {
+      if (couponUseId != null) await releaseCoupon(appliedCoupon.id, req.user.id, couponUseId);
       return res.status(409).json({ success: false, code: 'insufficient_stock', outOfStock });
     }
   } catch (e) {
-    await db.query('ROLLBACK');
+    // runBundleTransaction has already rolled the transaction back.
     if (couponUseId != null) await releaseCoupon(appliedCoupon.id, req.user.id, couponUseId);
     return err(res, 400, e.message || 'Failed to process bundle order', 'bundle_order_failed');
   }
@@ -318,22 +311,15 @@ async function handleBundleOrder(req, res, bundle_id, address_id, coupon_code, u
     if (idempotencyKey) await cacheResponse(idempotencyKey, { ...responseData, _status: 200 }, undefined, req.user.id);
 
     // Send bundle receipt email (non-fatal)
-    const { sendBundleReceiptEmail } = require('../utils/mailer');
-    sendBundleReceiptEmail({ buyer, bundle, items: bundleItems, totalPrice, discount, txHash })
-      .catch(() => {});
+    // Never let a mail failure reach the catch below: the payment has already gone through.
+    Promise.resolve()
+      .then(() => require('../utils/mailer').sendBundleReceiptEmail({ buyer, bundle, items: bundleItems, totalPrice, discount, txHash }))
+      .catch((mailErr) => logger.error('Bundle receipt email failed:', { error: mailErr.message }));
 
     return res.json(responseData);
   } catch (e) {
     if (couponUseId != null && !paymentSubmitted)
       await releaseCoupon(appliedCoupon.id, req.user.id, couponUseId);
-    await db.query('BEGIN');
-    for (const orderId of orderIds) {
-      await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['failed', orderId]);
-    }
-    for (const item of bundleItems) {
-      await db.query('UPDATE products SET quantity = quantity + $1 WHERE id = $2', [item.quantity, item.product_id]);
-    }
-    await db.query('COMMIT');
     await runBundleTransaction(async (tx) => {
       for (const orderId of orderIds) {
         await tx.query('UPDATE orders SET status = $1 WHERE id = $2', ['failed', orderId]);

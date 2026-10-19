@@ -22,7 +22,10 @@
 'use strict';
 
 const db = require('../db/schema');
-const { getContractEvents } = require('../utils/stellar');
+// Called through the module object (not destructured) so the current export is
+// always used, e.g. when tests replace it.
+const stellar = require('../utils/stellar');
+const mailer = require('../utils/mailer');
 const logger = require('../logger');
 const config = require('../config');
 
@@ -134,7 +137,7 @@ async function dispatchEvent(ev) {
 
 // ── monitor loop ──────────────────────────────────────────────────────────────
 
-async function monitorCreatorEarnings(contractId, retryCount = 0) {
+async function monitorCreatorEarnings(contractId) {
   const lastLedger = await getLastLedger(contractId);
 
   const filters = lastLedger > 0
@@ -142,32 +145,34 @@ async function monitorCreatorEarnings(contractId, retryCount = 0) {
     : { from: new Date(Date.now() - 60 * 60 * 1000).toISOString(), limit: 200 };
 
   let result;
-  try {
-    result = await getContractEvents(contractId, filters);
-  } catch (err) {
-    if (retryCount < MAX_RETRIES) {
-      const backoffMs = Math.min(Math.pow(2, retryCount) * 1000, MAX_BACKOFF_MS);
-      logger.warn(
-        `[CreatorEarningsMonitor] Failed to fetch events for ${contractId}, retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
-        err.message
-      );
-      await new Promise((resolve) => setTimeout(resolve, backoffMs));
-      return monitorCreatorEarnings(contractId, retryCount + 1);
-    }
-
-    logger.error(`[CreatorEarningsMonitor] Failed to fetch events for ${contractId} after ${MAX_RETRIES} retries:`, err.message);
-
+  for (let retryCount = 0; ; retryCount++) {
     try {
-      const { rows: admins } = await db.query(`SELECT email FROM users WHERE role = 'admin' LIMIT 1`);
-      if (admins[0]) {
-        const { sendContractAlert } = require('../utils/mailer');
-        await sendContractAlert({
-          to: admins[0].email,
-          alert: { alert_type: 'monitor_failure', contract_id: contractId, message: err.message },
-        }).catch(() => {});
+      result = await stellar.getContractEvents(contractId, filters);
+      break;
+    } catch (err) {
+      if (retryCount < MAX_RETRIES) {
+        const backoffMs = Math.min(Math.pow(2, retryCount) * 1000, MAX_BACKOFF_MS);
+        logger.warn(
+          `[CreatorEarningsMonitor] Failed to fetch events for ${contractId}, retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
+          err.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
       }
-    } catch { /* non-fatal */ }
-    return;
+
+      logger.error(`[CreatorEarningsMonitor] Failed to fetch events for ${contractId} after ${MAX_RETRIES} retries:`, err.message);
+
+      try {
+        const { rows: admins } = await db.query(`SELECT email FROM users WHERE role = 'admin' LIMIT 1`);
+        if (admins[0]) {
+          await mailer.sendContractAlert({
+            to: admins[0].email,
+            alert: { alert_type: 'monitor_failure', contract_id: contractId, message: err.message },
+          }).catch(() => {});
+        }
+      } catch { /* non-fatal */ }
+      return;
+    }
   }
 
   const events = result.events || [];

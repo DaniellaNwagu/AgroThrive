@@ -32,9 +32,11 @@
 'use strict';
 
 const db = require('../db/schema');
-const { getContractEvents } = require('../utils/stellar');
-const { sendStatusUpdateEmail } = require('../utils/mailer');
-const { sendPushToUser } = require('../utils/pushNotifications');
+// Called through the module objects (not destructured) so the current export is
+// always used, e.g. when tests or hot reloads replace a function.
+const stellar = require('../utils/stellar');
+const mailer = require('../utils/mailer');
+const pushNotifications = require('../utils/pushNotifications');
 const logger = require('../logger');
 const config = require('../config');
 
@@ -153,9 +155,9 @@ async function handleRelease(contractId, topics, data, txHash) {
     );
     if (rows[0]) {
       const order = rows[0];
-      await sendStatusUpdateEmail({ order, newStatus: 'paid', recipientEmail: order.email, recipientName: order.name })
+      await mailer.sendStatusUpdateEmail({ order, newStatus: 'paid', recipientEmail: order.email, recipientName: order.name })
         .catch((e) => logger.warn('[ContractMonitor] release email failed (non-fatal):', e.message));
-      await sendPushToUser(order.buyer_id, {
+      await pushNotifications.sendPushToUser(order.buyer_id, {
         title: 'Payment Released',
         body: `Your escrow for order #${orderId} has been released.`,
       }).catch(() => {});
@@ -189,9 +191,9 @@ async function handleRefund(contractId, topics, data, txHash) {
     );
     if (rows[0]) {
       const order = rows[0];
-      await sendStatusUpdateEmail({ order, newStatus: 'refunded', recipientEmail: order.email, recipientName: order.name })
+      await mailer.sendStatusUpdateEmail({ order, newStatus: 'refunded', recipientEmail: order.email, recipientName: order.name })
         .catch((e) => logger.warn('[ContractMonitor] refund email failed (non-fatal):', e.message));
-      await sendPushToUser(order.buyer_id, {
+      await pushNotifications.sendPushToUser(order.buyer_id, {
         title: 'Escrow Refunded',
         body: `Your escrow for order #${orderId} has been refunded.`,
       }).catch(() => {});
@@ -255,14 +257,38 @@ async function dispatchEvent(contractId, ev) {
     case 'refund':  return handleRefund(contractId, topics, ev.data, txHash);
     case 'dispute': return handleDispute(contractId, topics, ev.data, txHash);
     default:
-      // Store other events without DB side-effects
-      await storeInvocation({ contractId, method: action || 'unknown', args: ev.data, txHash, invocationIndex: 0, success: true, error: null });
+      // resolve / auto_release / stream_* share the release-style settlement
+      // semantics: the order is settled and the buyer is notified.
+      return handleRelease(contractId, topics, ev.data, txHash);
   }
+}
+
+async function reportFetchFailure(contractId, err) {
+  logger.error(`[ContractMonitor] Failed to fetch events for ${contractId} after ${MAX_RETRIES} retries:`, err.message);
+
+  // Send admin alert (non-fatal)
+  try {
+    const { rows: admins } = await db.query(`SELECT email FROM users WHERE role = 'admin' LIMIT 1`);
+    if (admins[0]) {
+      await mailer.sendContractAlert({
+        to: admins[0].email,
+        alert: { alert_type: 'monitor_failure', contract_id: contractId, message: err.message },
+      }).catch(() => {});
+    }
+  } catch { /* non-fatal */ }
+
+  // Record the alert for the admin dashboard (non-fatal)
+  try {
+    await db.query(
+      `INSERT INTO contract_alerts (contract_id, alert_type, severity, message) VALUES ($1, $2, $3, $4)`,
+      [contractId, 'monitor_failure', 'critical', `Failed to fetch events after ${MAX_RETRIES} retries: ${err.message}`]
+    );
+  } catch { /* non-fatal */ }
 }
 
 // ── monitor loop ──────────────────────────────────────────────────────────────
 
-async function monitorContract(contractId, retryCount = 0) {
+async function monitorContract(contractId) {
   const lastLedger = await getLastLedger(contractId);
 
   // Build filter: resume from last processed ledger + 1, or fall back to 1 h ago
@@ -271,45 +297,64 @@ async function monitorContract(contractId, retryCount = 0) {
     : { from: new Date(Date.now() - 60 * 60 * 1000).toISOString(), limit: 200 };
 
   let result;
-  try {
-    result = await getContractEvents(contractId, filters);
-  } catch (err) {
-    if (retryCount < MAX_RETRIES) {
-      const backoffMs = Math.min(Math.pow(2, retryCount) * 1000, MAX_BACKOFF_MS);
-      logger.warn(
-        `[ContractMonitor] Failed to fetch events for ${contractId}, retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
-        err.message
-      );
-      await new Promise((resolve) => setTimeout(resolve, backoffMs));
-      return monitorContract(contractId, retryCount + 1);
-    }
-
-    logger.error(`[ContractMonitor] Failed to fetch events for ${contractId} after ${MAX_RETRIES} retries:`, err.message);
-
-    // Send admin alert (non-fatal)
+  for (let retryCount = 0; ; retryCount++) {
     try {
-      const { rows: admins } = await db.query(`SELECT email FROM users WHERE role = 'admin' LIMIT 1`);
-      if (admins[0]) {
-        const { sendContractAlert } = require('../utils/mailer');
-        await sendContractAlert({
-          to: admins[0].email,
-          alert: { alert_type: 'monitor_failure', contract_id: contractId, message: err.message },
-        }).catch(() => {});
+      result = await stellar.getContractEvents(contractId, filters);
+      break;
+    } catch (err) {
+      if (retryCount < MAX_RETRIES) {
+        const backoffMs = Math.min(Math.pow(2, retryCount) * 1000, MAX_BACKOFF_MS);
+        logger.warn(
+          `[ContractMonitor] Failed to fetch events for ${contractId}, retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
+          err.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
       }
-    } catch { /* non-fatal */ }
-
-    // Record the alert for the admin dashboard (non-fatal)
-    try {
-      await db.query(
-        `INSERT INTO contract_alerts (contract_id, alert_type, severity, message) VALUES ($1, $2, $3, $4)`,
-        [contractId, 'monitor_failure', 'critical', `Failed to fetch events after ${MAX_RETRIES} retries: ${err.message}`]
-      );
-    } catch { /* non-fatal */ }
-    return;
-      // resolve / auto_release / stream_* share the release-style settlement
-      // semantics: the order is settled and the buyer is notified.
-      return handleRelease(contractId, topics, ev.data, txHash);
+      await reportFetchFailure(contractId, err);
+      return;
+    }
   }
+
+  const events = result.events || [];
+  let highestLedger = lastLedger;
+
+  for (const ev of events) {
+    await dispatchEvent(contractId, ev);
+    if (ev.ledger && Number(ev.ledger) > highestLedger) {
+      highestLedger = Number(ev.ledger);
+    }
+  }
+
+  // Persist cursor only when we actually advanced
+  if (highestLedger > lastLedger) {
+    await saveLastLedger(contractId, highestLedger);
+  }
+}
+
+async function runMonitoringJob() {
+  // Use the configured escrow contract if no registry is available
+  const escrowContractId = config.sorobanEscrowContractId;
+
+  let contracts = [];
+  try {
+    const { rows } = await db.query(`SELECT contract_id FROM contracts_registry`);
+    contracts = rows;
+  } catch {
+    // table may not exist in all envs — fall back to config
+  }
+
+  if (escrowContractId && !contracts.some((c) => c.contract_id === escrowContractId)) {
+    contracts.push({ contract_id: escrowContractId });
+  }
+
+  await Promise.all(contracts.map((c) => monitorContract(c.contract_id)));
+}
+
+function startContractMonitor() {
+  logger.info('[ContractMonitor] Starting — polling every 5 minutes');
+  runMonitoringJob();
+  return setInterval(runMonitoringJob, POLL_INTERVAL_MS);
 }
 
 module.exports = {

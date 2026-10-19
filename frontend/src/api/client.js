@@ -416,14 +416,14 @@ export const api = {
     const { token } = await request('/auth/stream-token');
     return `/api/orders/stream?token=${encodeURIComponent(token || '')}`;
   },
-  getWalletStreamUrl: () => `/api/wallet/stream?token=${encodeURIComponent(accessToken || '')}`,
-  getOrdersStreamUrl: () => `/api/orders/stream?token=${encodeURIComponent(accessToken || '')}`,
-  getMessagesStreamUrl: () => `/api/messages/events?token=${encodeURIComponent(accessToken || '')}`,
+  getMessagesStreamUrl: async () => {
+    const { token } = await request('/auth/stream-token');
+    return `/api/messages/events?token=${encodeURIComponent(token || '')}`;
+  },
   getStockStreamUrl: (productId) => `${BASE}/products/${encodeURIComponent(productId)}/stock-stream`,
   getUnreadMessageCount: () => request('/messages/unread-count'),
 
   getFarmer: (id) => request(`/farmers/${id}`),
-  updateFarmerProfile: (body) => request("/farmers/me", { method: "PATCH", body }),
   updateProfile: (body) => request('/auth/me', { method: 'PATCH', body }),
   updateFarmerProfile: (body) => request('/farmers/me', { method: 'PATCH', body }),
 
@@ -517,8 +517,6 @@ export const api = {
       body: { ...body, budget_override_confirmed: true },
       headers: { 'X-Idempotency-Key': requireIdempotencyKey(idempotencyKey) },
     }),
-  getOrderStatus: (id) => request(`/orders/${id}/status`),
-  placeOrderWithBudgetOverride: (body) => request('/orders', { method: 'POST', body: { ...body, budget_override_confirmed: true } }),
   getOrderStatus: (id) => request(`/orders/${id}/status`, { silent: true }),
   getOrderPaymentLink: (orderId) => request(`/orders/${orderId}/payment-link`),
   getOrderPaymentLinkQr: (orderId) => `/api/orders/${orderId}/payment-link/qr`,

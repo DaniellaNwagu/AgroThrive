@@ -398,8 +398,8 @@ describe('retry logic — exponential backoff', () => {
 
     const jobPromise = monitor.runMonitoringJob();
     for (let i = 0; i < 4; i++) {
-      jest.advanceTimersByTime(Math.min(Math.pow(2, i) * 1000, 60000));
-      await Promise.resolve();
+      // Async variant also flushes the awaits between retries.
+      await jest.advanceTimersByTimeAsync(Math.min(Math.pow(2, i) * 1000, 60000));
     }
     await jobPromise;
 
@@ -425,8 +425,7 @@ describe('retry logic — exponential backoff', () => {
 
     const jobPromise = monitor.runMonitoringJob();
     for (let i = 0; i < 6; i++) {
-      jest.advanceTimersByTime(Math.min(Math.pow(2, i) * 1000, 60000));
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(Math.min(Math.pow(2, i) * 1000, 60000));
     }
     await jobPromise;
 

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature integrates the Stellar DEX (Decentralized Exchange) order book into the GoGreen platform to provide real-time XLM/USDC price discovery. Currently, farmers set product prices in XLM without any market context. By surfacing live bid/ask data from the Stellar DEX, farmers can make informed pricing decisions that reflect current market rates. The integration adds a backend endpoint that fetches and caches order book data, displays the current XLM/USDC mid price in the farmer Dashboard header, and shows a USD equivalent hint in the product creation form.
+This feature integrates the Stellar DEX (Decentralized Exchange) order book into the AgroThrive platform to provide real-time XLM/USDC price discovery. Currently, farmers set product prices in XLM without any market context. By surfacing live bid/ask data from the Stellar DEX, farmers can make informed pricing decisions that reflect current market rates. The integration adds a backend endpoint that fetches and caches order book data, displays the current XLM/USDC mid price in the farmer Dashboard header, and shows a USD equivalent hint in the product creation form.
 
 ## Glossary
 

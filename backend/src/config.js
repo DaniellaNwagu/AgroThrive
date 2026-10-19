@@ -33,7 +33,7 @@ const EnvSchema = z.object({
   FRONTEND_URL: z.string().default('http://localhost:5173'),
   BACKEND_URL: z.string().default('http://localhost:4000'),
   CORS_ORIGIN: z.string().optional(),
-  FEDERATION_DOMAIN: z.string().default('gogreen.io'),
+  FEDERATION_DOMAIN: z.string().default('agrothrive.io'),
 
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
@@ -84,7 +84,7 @@ const EnvSchema = z.object({
   // Web Push
   WEB_PUSH_VAPID_PUBLIC_KEY: z.string().optional(),
   WEB_PUSH_VAPID_PRIVATE_KEY: z.string().optional(),
-  WEB_PUSH_VAPID_SUBJECT: z.string().default('mailto:admin@gogreen.com'),
+  WEB_PUSH_VAPID_SUBJECT: z.string().default('mailto:admin@agrothrive.com'),
 
   // Proxy
   TRUST_PROXY: z.string().optional(),
@@ -102,7 +102,7 @@ try {
 } catch (err) {
   if (err instanceof ZodError) {
     console.error('[config] Invalid or missing environment variables:');
-    err.errors.forEach(e => {
+    err.issues.forEach(e => {
       console.error(`  ${e.path.join('.') || '(root)'}: ${e.message}`);
     });
     console.error('[config] Copy backend/.env.example to backend/.env and fill in the required values.');

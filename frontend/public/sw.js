@@ -177,7 +177,7 @@ self.addEventListener('fetch', (event) => {
 // Push notifications
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || 'GoGreen';
+  const title = data.title || 'AgroThrive';
   const options = {
     body: data.body || 'You have a new notification',
     icon: '/favicon.ico',

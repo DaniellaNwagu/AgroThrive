@@ -206,6 +206,7 @@ const EMPTY_FORM = {
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 5;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const MAX_IMAGES = 6;
 
 const STATUS_COLOR = {
   pending: '#e67e22',
@@ -518,58 +519,6 @@ export default function Dashboard() {
     }
   }
 
-  async function handleCreateBatch(e) {
-    e?.preventDefault?.();
-    setBatchMsg(null);
-    const code = batchForm.batch_code.trim();
-    const date = batchForm.harvest_date.trim();
-    if (!code || !date) {
-      setBatchMsg({ type: 'err', text: 'Batch code and harvest date are required.' });
-      return;
-    }
-    try {
-      await api.createHarvestBatch({
-        batch_code: code,
-        harvest_date: date,
-        notes: batchForm.notes.trim() || undefined,
-      });
-      setBatchForm({ batch_code: '', harvest_date: '', notes: '' });
-      setBatchMsg({ type: 'ok', text: 'Harvest batch created.' });
-      await load();
-    } catch (err) {
-      setBatchMsg({ type: 'err', text: getErrorMessage(err) });
-    }
-  }
-
-  function validateAndSetImage(file) {
-    setImageErr('');
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setImageErr('Only JPEG, PNG, or WebP images are allowed.');
-      return false;
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      setImageErr(`Image must be ${MAX_SIZE_MB} MB or smaller.`);
-      return false;
-    }
-    setImageFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setImageUrl(null); // reset confirmed URL until uploaded
-    return true;
-  }
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (file) validateAndSetImage(file);
-    e.target.value = ''; // allow re-selecting same file
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) validateAndSetImage(file);
-  }
-
   useEffect(() => {
     if (user?.role !== 'farmer') return;
     const interval = setInterval(async () => {
@@ -636,74 +585,6 @@ export default function Dashboard() {
       setProfileMsg({ type: 'ok', text: t('dashboard.profileUpdated') });
     } catch (err) {
       setProfileMsg({ type: 'err', text: getErrorMessage(err) });
-    }
-  }
-
-  async function handleAdd(e) {
-    e.preventDefault();
-    setMsg(null);
-    const newErrors = {};
-    if (form.is_preorder) {
-      if (!form.preorder_delivery_date) {
-        newErrors.preorder_delivery_date = 'Date must be in YYYY-MM-DD format';
-      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(form.preorder_delivery_date)) {
-        newErrors.preorder_delivery_date = 'Date must be in YYYY-MM-DD format';
-      }
-    }
-    if (Object.keys(newErrors).length > 0) { setFormErrors(newErrors); return; }
-    setFormErrors({});
-    let finalImageUrl = imageUrl;
-
-    if (imageFile) {
-      setUploading(true);
-      try {
-        const res = await api.uploadProductImage(imageFile);
-        finalImageUrl = res.imageUrl;
-      } catch (err) {
-        setUploading(false);
-        setMsg({ type: 'err', text: `Image upload failed: ${err.message}` });
-        return;
-      }
-      setUploading(false);
-    }
-
-    try {
-      // Prepare nutrition data
-      const nutritionData = {};
-      if (form.nutrition.calories) nutritionData.calories = parseFloat(form.nutrition.calories);
-      if (form.nutrition.protein) nutritionData.protein = parseFloat(form.nutrition.protein);
-      if (form.nutrition.carbs) nutritionData.carbs = parseFloat(form.nutrition.carbs);
-      if (form.nutrition.fat) nutritionData.fat = parseFloat(form.nutrition.fat);
-      if (form.nutrition.fiber) nutritionData.fiber = parseFloat(form.nutrition.fiber);
-
-      const batchId = form.batch_id ? parseInt(form.batch_id, 10) : undefined;
-
-      await api.createProduct({
-        ...form,
-        price: parseFloat(form.price),
-        quantity: parseInt(form.quantity),
-        pricing_model: form.pricing_model,
-        min_price: form.pricing_model === 'pwyw' ? parseFloat(form.min_price) : undefined,
-        is_preorder: form.is_preorder ? 1 : 0,
-        preorder_delivery_date: form.is_preorder ? form.preorder_delivery_date : null,
-        image_url: finalImageUrl || undefined,
-        nutrition: Object.keys(nutritionData).length > 0 ? nutritionData : undefined,
-        pricing_type: form.pricing_type || 'unit',
-        min_weight: form.pricing_type === 'weight' ? parseFloat(form.min_weight) : undefined,
-        max_weight: form.pricing_type === 'weight' ? parseFloat(form.max_weight) : undefined,
-        min_order_quantity: form.min_order_quantity ? parseInt(form.min_order_quantity) : undefined,
-        allergens: form.allergens && form.allergens.length > 0 ? form.allergens : undefined,
-        allowed_regions: form.allowed_regions && form.allowed_regions.length > 0 ? form.allowed_regions : undefined,
-        available_from: form.available_from || undefined,
-        available_until: form.available_until || undefined,
-        batch_id: Number.isFinite(batchId) ? batchId : undefined,
-      });
-      setMsg({ type: 'ok', text: t('dashboard.productListedOk') });
-      setForm({ ...EMPTY_FORM });
-      removeImage();
-      load();
-    } catch (err) {
-      setMsg({ type: 'err', text: err.message });
     }
   }
 
@@ -1108,10 +989,10 @@ export default function Dashboard() {
         </div>
       )}
       <Helmet>
-        <title>Farmer Dashboard – GoGreen</title>
+        <title>Farmer Dashboard – AgroThrive</title>
         <meta
           name="description"
-          content="Manage your product listings, track sales, and grow your farm business on GoGreen."
+          content="Manage your product listings, track sales, and grow your farm business on AgroThrive."
         />
       </Helmet>
       <div

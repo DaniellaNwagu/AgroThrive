@@ -122,7 +122,6 @@ jest.mock('../src/utils/cdn', () => ({ rewriteImageUrl: (url) => url }));
 jest.mock('../src/utils/pushNotifications', () => ({ sendPushToUser: jest.fn().mockResolvedValue({}) }));
 jest.mock('../src/utils/geocheck', () => ({
   checkGeoFence: jest.fn().mockResolvedValue({ allowed: true }),
-  checkCoordinateGeoFence: jest.fn(() => ({ allowed: true })),
   checkCoordinateGeoFence: jest.fn().mockReturnValue({ checked: false, allowed: true, distanceKm: null, reason: null }),
 }));
 jest.mock('../src/utils/idempotency', () => ({
@@ -148,6 +147,21 @@ jest.mock('../src/cache', () => ({
 // --- requestLogger mock (uuid is ESM in v13, avoid parse error) ---
 jest.mock('../src/middleware/requestLogger', () => (req, res, next) => next());
 
+// --- crypto: fixtures use placeholder wallet secrets (e.g. 'SSECRET') that are
+// neither valid plaintext keys nor encrypted payloads, so pass them through.
+// encrypt/decrypt stay real; crypto.test.js unmocks the module entirely. ---
+jest.mock('../src/utils/crypto', () => ({
+  ...jest.requireActual('../src/utils/crypto'),
+  decryptUserSecretKey: async (secret) => secret,
+}));
+
+// --- stellar-hd-wallet mock — it also boots js-nacl WASM asynchronously, which can
+// reject after a suite's environment is torn down and crash the whole Jest run.
+// Suites that need real derivation can jest.unmock('stellar-hd-wallet'). ---
+jest.mock('stellar-hd-wallet', () => ({
+  fromMnemonic: (mnemonic) => ({ getSecret: (index) => `S_HD_${index}_${mnemonic.length}` }),
+}));
+
 // --- web-push mock — prevents js-nacl WASM from loading in the test environment ---
 jest.mock('web-push', () => ({
   sendNotification: jest.fn().mockResolvedValue({ statusCode: 201 }),
@@ -158,40 +172,6 @@ jest.mock('web-push', () => ({
   })),
 }));
 
-// --- Routes mock ---
-jest.mock('../src/routes', () => {
-  const express = require('express');
-  const router = express.Router();
-  router.use('/api/auth', require('../src/routes/auth'));
-  router.use('/api/products', require('../src/routes/products'));
-  router.use('/api/orders', require('../src/routes/orders'));
-  router.use('/api/orders/:id/return', require('../src/routes/returns'));
-  router.use('/api', require('../src/routes/reviews'));
-  router.use('/api/disputes', require('../src/routes/disputes'));
-  router.use('/api/analytics', require('../src/routes/analytics'));
-  router.use('/api/notifications', require('../src/routes/notifications'));
-  router.use('/api/creator-earnings', require('../src/routes/creatorEarnings'));
-  router.use('/api/admin', require('../src/routes/admin'));
-  router.use('/api/admin', require('../src/routes/adminBan'));           // #1028 ban/unban audit
-  router.use('/api/admin/audit-log', require('../src/routes/adminAuditLog'));  // #1028 audit log endpoint
-  router.use('/api/admin/uploads', require('../src/routes/adminOrphanedUploads')); // #1025 orphaned uploads
-  router.use('/api/contracts', require('../src/routes/contracts'));       // #1028 contract simulate audit
-  router.use('/api/calendar', require('../src/routes/calendar'));
-  router.use('/api/batches', require('../src/routes/batches'));
-  router.use('/api/network', require('../src/routes/network'));
-  router.use('/api/market', require('../src/routes/market'));
-  router.use('/api/escrow', require('../src/routes/escrow'));
-  // #1004 bundles & bundle-discounts
-  router.use('/api/bundles', require('../src/routes/bundles'));
-  router.use('/api/farmers', require('../src/routes/bundleDiscounts'));
-  // #1005 product import
-  router.use('/api/products/import', require('../src/routes/productImport'));
-  // #1006 product videos
-  router.use('/api/products', require('../src/routes/productVideos'));
-  // #1007 product share
-  router.use('/api/products', require('../src/routes/productShare'));
-  return router;
-});
 
 // --- Mailer mock ---
 jest.mock('../src/utils/mailer', () => ({
@@ -259,34 +239,36 @@ beforeEach(() => {
   );
 
   const idempotency = jest.requireMock('../src/utils/idempotency');
-  idempotency.getCachedResponse.mockResolvedValue(null);
-  idempotency.cacheResponse.mockResolvedValue(undefined);
+  idempotency.getCachedResponse?.mockResolvedValue(null);
+  idempotency.claimIdempotencyKey?.mockResolvedValue({ status: 'claimed' });
+  idempotency.releaseIdempotencyKey?.mockResolvedValue(undefined);
+  idempotency.cacheResponse?.mockResolvedValue(undefined);
 
   const stellar = jest.requireMock('../src/utils/stellar');
-  stellar.createWallet.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET' });
-  stellar.createWalletFromMnemonic.mockReturnValue({
+  stellar.createWallet?.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET' });
+  stellar.createWalletFromMnemonic?.mockReturnValue({
     publicKey: 'GPUBKEY',
     secretKey: 'SSECRET',
     mnemonic: 'word '.repeat(12).trim(),
   });
-  stellar.deriveKeypairFromMnemonic.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET' });
-  stellar.fundTestnetAccount.mockResolvedValue({});
-  stellar.getBalance.mockResolvedValue(1000);
-  stellar.getTransactions.mockResolvedValue({ records: [], next_cursor: null, prev_cursor: null });
-  stellar.sendPayment.mockResolvedValue('TXHASH123');
-  stellar.getOrderBook.mockResolvedValue({ bids: [], asks: [], base: 'XLM', counter: 'USDC' });
-  stellar.createClaimableBalance.mockResolvedValue({
+  stellar.deriveKeypairFromMnemonic?.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET' });
+  stellar.fundTestnetAccount?.mockResolvedValue({});
+  stellar.getBalance?.mockResolvedValue(1000);
+  stellar.getTransactions?.mockResolvedValue({ records: [], next_cursor: null, prev_cursor: null });
+  stellar.sendPayment?.mockResolvedValue('TXHASH123');
+  stellar.getOrderBook?.mockResolvedValue({ bids: [], asks: [], base: 'XLM', counter: 'USDC' });
+  stellar.createClaimableBalance?.mockResolvedValue({
     txHash: 'ESCROW_TX',
     balanceId: 'BALANCE_ID_001',
   });
-  stellar.createPreorderClaimableBalance.mockResolvedValue({
+  stellar.createPreorderClaimableBalance?.mockResolvedValue({
     txHash: 'PREORDER_TX',
     balanceId: 'PREORDER_BALANCE_001',
   });
-  stellar.claimBalance.mockResolvedValue('CLAIM_TX_001');
-  stellar.getContractWasmHash.mockResolvedValue('0'.repeat(64));
-  stellar.invokeEscrowContract.mockResolvedValue({ txHash: 'ESCROW_TX' });
-  stellar.burnRewardTokens.mockResolvedValue({});
+  stellar.claimBalance?.mockResolvedValue('CLAIM_TX_001');
+  stellar.getContractWasmHash?.mockResolvedValue('0'.repeat(64));
+  stellar.invokeEscrowContract?.mockResolvedValue({ txHash: 'ESCROW_TX' });
+  stellar.burnRewardTokens?.mockResolvedValue({});
   if (stellar.claimBalance) stellar.claimBalance.mockResolvedValue('CLAIM_TX_001');
   stellar.createWallet?.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET' });
   stellar.createWalletFromMnemonic?.mockReturnValue({ publicKey: 'GPUBKEY', secretKey: 'SSECRET', mnemonic: 'word '.repeat(12).trim() });
@@ -304,11 +286,13 @@ beforeEach(() => {
     balanceId: 'BALANCE_ID_001',
   });
   stellar.claimBalance?.mockResolvedValue('CLAIM_TX_001');
-  stellar.simulateContractCall = jest.fn();
-  stellar.recordCarbonOffset = jest.fn().mockResolvedValue({});
-  stellar.getCarbonOffset = jest.fn();
-  stellar.invokeContract = jest.fn();
-  stellar.getContractWasmHash = jest.fn().mockResolvedValue('0'.repeat(64));
+  // Reconfigure (never replace) these mocks: routes destructure them at require
+  // time, so a fresh jest.fn() here would be invisible to the code under test.
+  for (const name of ['simulateContractCall', 'recordCarbonOffset', 'getCarbonOffset', 'invokeContract', 'getContractWasmHash']) {
+    if (typeof stellar[name]?.mockReset !== 'function') stellar[name] = jest.fn();
+  }
+  stellar.recordCarbonOffset.mockResolvedValue({});
+  stellar.getContractWasmHash.mockResolvedValue('0'.repeat(64));
   stellar.getOrderBook?.mockResolvedValue({ bids: [], asks: [], base: 'XLM', counter: 'USDC' });
   stellar.getEscrowState?.mockResolvedValue({
     status: 'funded',
@@ -323,12 +307,11 @@ beforeEach(() => {
   if (stellar.mintRewardTokens) stellar.mintRewardTokens.mockResolvedValue({});
   if (stellar.burnRewardTokens) stellar.burnRewardTokens.mockResolvedValue({});
 
+  const pushNotifications = jest.requireMock('../src/utils/pushNotifications');
+  pushNotifications.sendPushToUser?.mockResolvedValue?.({});
+
   const mailer = jest.requireMock('../src/utils/mailer');
-  mailer.sendOrderEmails.mockResolvedValue({});
-  mailer.sendLowStockAlert.mockResolvedValue({});
-  mailer.sendStatusUpdateEmail.mockResolvedValue({});
-  mailer.sendBackInStockEmail.mockResolvedValue({});
-  mailer.sendReturnEmail.mockResolvedValue({});
+  if (mailer.sendReturnEmail) mailer.sendReturnEmail.mockResolvedValue({});
   if (mailer.sendOrderEmails) mailer.sendOrderEmails.mockResolvedValue({});
   if (mailer.sendLowStockAlert) mailer.sendLowStockAlert.mockResolvedValue({});
   if (mailer.sendStatusUpdateEmail) mailer.sendStatusUpdateEmail.mockResolvedValue({});

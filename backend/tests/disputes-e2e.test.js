@@ -13,6 +13,8 @@
  */
 
 const jwt = require('jsonwebtoken');
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockDb } = require('./setup');
 const mailer = jest.requireMock('../src/utils/mailer');
 const stellar = jest.requireMock('../src/utils/stellar');
@@ -58,9 +60,10 @@ const farmer = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // invokeEscrowContract is used by disputes route — mock it as non-fatal success
-  stellar.invokeEscrowContract = jest.fn().mockResolvedValue({ txHash: 'ESCROW_DISPUTE_TX' });
-  stellar.burnRewardTokens = jest.fn().mockResolvedValue({});
+  // invokeEscrowContract is used by disputes route — mock it as non-fatal success.
+  // Reconfigure rather than replace: the route destructured these at require time.
+  stellar.invokeEscrowContract.mockResolvedValue({ txHash: 'ESCROW_DISPUTE_TX' });
+  stellar.burnRewardTokens.mockResolvedValue({});
 });
 
 // ── Step 1: Open a dispute ─────────────────────────────────────────────────────

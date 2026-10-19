@@ -8,6 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Mock db/schema before requiring the job
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 jest.mock('../src/db/schema', () => ({
   query: jest.fn(),
   isPostgres: false,

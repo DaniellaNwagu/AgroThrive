@@ -9,6 +9,8 @@
  *   - Audit entries created by ban/unban, dispute resolve, contract simulate
  */
 
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockQuery } = require('./setup');
 const jwt = require('jsonwebtoken');
 

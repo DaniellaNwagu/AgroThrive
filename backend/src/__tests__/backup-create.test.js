@@ -4,7 +4,7 @@ const path = require('path');
 const { createBackup } = require('../../scripts/backup');
 
 test('creates a dated backup with identical contents', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gogreen-backup-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agrothrive-backup-'));
   const dbPath = path.join(root, 'source.db');
   const backupsDir = path.join(root, 'backups');
   fs.writeFileSync(dbPath, 'database');

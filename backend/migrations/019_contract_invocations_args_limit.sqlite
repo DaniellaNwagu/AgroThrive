@@ -1,0 +1,5 @@
+-- SQLite variant of 019_contract_invocations_args_limit.sql.
+-- SQLite cannot add a CHECK constraint to an existing table. The 64 KiB limit
+-- is enforced by the application, which truncates args before insert
+-- (see truncateArgsForStorage in src/jobs/contractMonitor.js).
+SELECT 1;

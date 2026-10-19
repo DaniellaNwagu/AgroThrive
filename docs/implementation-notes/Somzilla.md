@@ -1,7 +1,7 @@
 Issue:#1033 Pagination.jsx's buildPageList does not clamp the current page to a valid range, rendering an invalid page button when totalPages shrinks
 
 Project
-GoGreen — Frontend (Shared Components)
+AgroThrive — Frontend (Shared Components)
 
 Description
 frontend/src/components/Pagination.jsx's buildPageList(current, total) always includes the caller-supplied current page in its displayed set:

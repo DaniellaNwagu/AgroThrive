@@ -12,23 +12,19 @@ const { checkGeoFence, checkCoordinateGeoFence } = jest.requireMock('../utils/ge
 const mailer = jest.requireMock('../utils/mailer');
 const { sendPushToUser } = jest.requireMock('../utils/pushNotifications');
 
-jest.mock('../middleware/auth', () => {
-  const jwt = require('jsonwebtoken');
-  return (req, res, next) => {
-    const header = req.headers['authorization'];
-    if (!header) return res.status(401).json({ error: 'unauthorized' });
-    try {
-      req.user = jwt.verify(header.replace('Bearer ', ''), process.env.JWT_SECRET);
-      next();
-    } catch {
-      res.status(401).json({ error: 'unauthorized' });
-    }
-  };
-});
+jest.mock('../middleware/auth', () => require('../../tests/helpers/jwtOnlyAuth'));
+
+// The DB-backed verification check has its own unit tests
+// (requireEmailVerified.test.js); here it would consume the scripted db.query
+// responses, so trust the JWT claim instead.
+jest.mock('../middleware/requireEmailVerified', () => (req, res, next) =>
+  req.user?.email_verified_at
+    ? next()
+    : res.status(403).json({ error: 'Email not verified.', code: 'email_not_verified' })
+);
 
 const mockDb = jest.requireMock('../db/schema');
 const stellar = jest.requireMock('../utils/stellar');
-stellar.recordCarbonOffset = jest.fn().mockResolvedValue({});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -48,13 +44,11 @@ beforeEach(() => {
 });
 
 const SECRET = process.env.JWT_SECRET;
-const buyerToken = jwt.sign({ id: 2, role: 'buyer' }, SECRET);
 const verifiedBuyerToken = jwt.sign({
   id: 2,
   role: 'buyer',
   email_verified_at: new Date().toISOString(),
 }, SECRET);
-const farmerToken = jwt.sign({ id: 1, role: 'farmer' }, SECRET);
 const buyerToken = jwt.sign({ id: 2, role: 'buyer', email_verified_at: new Date().toISOString() }, SECRET);
 const farmerToken = jwt.sign({ id: 1, role: 'farmer', email_verified_at: new Date().toISOString() }, SECRET);
 const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
@@ -84,6 +78,32 @@ const farmer = {
   email: 'farmer@example.com',
   stellar_public_key: 'GFARMER123',
 };
+
+/**
+ * Answers the order-creation queries by SQL shape rather than call order, so
+ * tests don't break whenever the route adds or reorders a lookup.
+ */
+function mockOrderQueries({ product: prod = product, orderId = 42, lowStock } = {}) {
+  stellar.getBalance.mockResolvedValue(9999);
+  mockDb.query.mockImplementation(async (sql) => {
+    if (sql.includes('FROM products p JOIN users u')) return { rows: [prod], rowCount: 1 };
+    if (sql.startsWith('SELECT * FROM users WHERE id')) return { rows: [buyer], rowCount: 1 };
+    if (sql.includes('FROM price_tiers')) return { rows: [], rowCount: 0 };
+    if (sql.startsWith('SELECT price FROM products')) return { rows: [{ price: prod.price }], rowCount: 1 };
+    if (sql.includes('COUNT(DISTINCT product_id)')) return { rows: [{ cnt: '0' }], rowCount: 1 };
+    if (sql.includes('SET quantity = quantity - $1')) {
+      return { rows: [{ quantity: Number(prod.quantity) - 1 }], rowCount: 1 };
+    }
+    if (sql.includes('INSERT INTO orders')) return { rows: [{ id: orderId }], rowCount: 1 };
+    if (sql.startsWith('SELECT id, name, email, stellar_public_key FROM users')) {
+      return { rows: [farmer], rowCount: 1 };
+    }
+    if (sql.startsWith('SELECT quantity, low_stock_threshold')) {
+      return { rows: [lowStock || { quantity: 8, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+}
 
 describe('POST /api/orders', () => {
   it('rejects a requested quantity greater than current stock', async () => {
@@ -198,17 +218,7 @@ describe('POST /api/orders', () => {
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockResolvedValueOnce('FAKE_TX_HASH_ABC');
 
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [product], rowCount: 1 }) // product lookup
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 }) // buyer lookup
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // stock decrement
-      .mockResolvedValueOnce({ rows: [{ id: 42 }], rowCount: 1 }) // INSERT order
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // UPDATE paid
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 }) // farmer lookup
-      .mockResolvedValueOnce({
-        rows: [{ quantity: 8, low_stock_threshold: 5, low_stock_alerted: 0 }],
-        rowCount: 1,
-      }); // low-stock
+    mockOrderQueries({ orderId: 42 });
 
     const res = await request(app)
       .post('/api/orders')
@@ -216,8 +226,7 @@ describe('POST /api/orders', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 2 });
 
-    console.log('RES BODY', res.status, res.body);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
     expect(res.body.txHash).toBe('FAKE_TX_HASH_ABC');
     expect(res.body.orderId).toBeDefined();
@@ -259,6 +268,8 @@ describe('POST /api/orders', () => {
     expect(eligibilityQuery[1]).toEqual([2, 1, 10]);
     const insertQuery = mockDb.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO orders'));
     expect(insertQuery[1][3]).toBe(4.5);
+  });
+
   describe('PATCH /api/orders/:id/status', () => {
     const order = {
       id: 42,
@@ -340,14 +351,7 @@ describe('POST /api/orders', () => {
     stellar.getBalance.mockResolvedValueOnce(9999999);
     stellar.sendPayment.mockResolvedValueOnce('FAKE_TX_MAX');
 
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [{ ...product, quantity: 10000 }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ id: 99 }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ quantity: 0, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 });
+    mockOrderQueries({ product: { ...product, quantity: 10000 }, orderId: 99 });
 
     const res = await request(app)
       .post('/api/orders')
@@ -355,7 +359,7 @@ describe('POST /api/orders', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 10000 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
   });
 
   it('returns 400 when quantity exceeds MAX_ORDER_QUANTITY (10000)', async () => {
@@ -390,13 +394,7 @@ describe('POST /api/orders', () => {
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockRejectedValueOnce(new Error('network timeout'));
 
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [product], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ id: 55 }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // UPDATE failed
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 }); // restore stock
+    mockOrderQueries({ orderId: 55 });
 
     const res = await request(app)
       .post('/api/orders')
@@ -435,17 +433,7 @@ describe('POST /api/orders', () => {
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockResolvedValueOnce('FAKE_TX_HASH_STOCK');
 
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [product], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ id: 77 }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 })
-      .mockResolvedValueOnce({
-        rows: [{ quantity: 8, low_stock_threshold: 5, low_stock_alerted: 0 }],
-        rowCount: 1,
-      });
+    mockOrderQueries({ orderId: 77 });
 
     await request(app)
       .post('/api/orders')
@@ -550,14 +538,7 @@ describe('Pre-order flows', () => {
       balanceId: 'PREORDER_BALANCE_001',
     });
 
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [preorderProduct], rowCount: 1 }) // product lookup
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })            // buyer lookup
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })                 // stock decrement
-      .mockResolvedValueOnce({ rows: [{ id: 91 }], rowCount: 1 })      // INSERT order
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })                 // UPDATE paid
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 })           // farmer lookup
-      .mockResolvedValueOnce({ rows: [{ quantity: 8, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 }); // low-stock
+    mockOrderQueries({ product: preorderProduct, orderId: 91 });
 
     const res = await request(app)
       .post('/api/orders')
@@ -565,7 +546,7 @@ describe('Pre-order flows', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 2 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
     expect(res.body.preorder).toBe(true);
     expect(res.body.claimableBalanceId).toBe('PREORDER_BALANCE_001');
@@ -608,14 +589,7 @@ describe('PWYW min_price validation', () => {
   function mockSuccessfulOrder(prod) {
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockResolvedValueOnce('PWYW_TX_HASH');
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [prod], rowCount: 1 })       // product lookup
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })       // buyer lookup
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })            // stock decrement
-      .mockResolvedValueOnce({ rows: [{ id: 88 }], rowCount: 1 }) // INSERT order
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })            // UPDATE paid
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 })      // farmer lookup
-      .mockResolvedValueOnce({ rows: [{ quantity: 9, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 }); // low-stock
+    mockOrderQueries({ product: prod, orderId: 88 });
   }
 
   it('returns 422 when custom_price is below min_price', async () => {
@@ -658,7 +632,7 @@ describe('PWYW min_price validation', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1, custom_price: 3.0 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 
@@ -671,7 +645,7 @@ describe('PWYW min_price validation', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1, custom_price: 10.0 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 
@@ -679,14 +653,7 @@ describe('PWYW min_price validation', () => {
     // fixed product (no pricing_model / pricing_model = 'fixed') should succeed without custom_price
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockResolvedValueOnce('FIXED_TX_HASH');
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [product], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ id: 89 }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ quantity: 9, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 });
+    mockOrderQueries({ orderId: 89 });
 
     const res = await request(app)
       .post('/api/orders')
@@ -694,7 +661,7 @@ describe('PWYW min_price validation', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 });
@@ -719,14 +686,7 @@ describe('Flash sale time-window enforcement', () => {
   function mockSuccessfulFlashOrder(prod) {
     stellar.getBalance.mockResolvedValueOnce(9999);
     stellar.sendPayment.mockResolvedValueOnce('FLASH_TX_HASH');
-    mockDb.query
-      .mockResolvedValueOnce({ rows: [prod], rowCount: 1 })   // product lookup
-      .mockResolvedValueOnce({ rows: [buyer], rowCount: 1 })  // buyer lookup
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })       // stock decrement
-      .mockResolvedValueOnce({ rows: [{ id: 200 }], rowCount: 1 }) // INSERT order
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })       // UPDATE paid
-      .mockResolvedValueOnce({ rows: [farmer], rowCount: 1 }) // farmer lookup
-      .mockResolvedValueOnce({ rows: [{ quantity: 8, low_stock_threshold: 5, low_stock_alerted: 0 }], rowCount: 1 }); // low-stock
+    mockOrderQueries({ product: prod, orderId: 200 });
   }
 
   it('allows order when flash sale is currently active', async () => {
@@ -738,7 +698,7 @@ describe('Flash sale time-window enforcement', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 
@@ -815,7 +775,7 @@ describe('Flash sale time-window enforcement', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 
@@ -834,7 +794,7 @@ describe('Flash sale time-window enforcement', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 
@@ -854,7 +814,7 @@ describe('Flash sale time-window enforcement', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({ product_id: 10, quantity: 1 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.status).toBe('paid');
   });
 });
@@ -943,6 +903,7 @@ describe('Carbon offsets', () => {
         rows: [{
           id: 42,
           buyer_id: 2,
+          status: 'shipped',
           product_name: 'Apples',
           unit: 'kg',
           category: 'vegetables',

@@ -317,9 +317,11 @@ describe('deployContract error handling (#474)', () => {
         getTransaction: jest.fn(),
         getLatestLedger: jest.fn(),
       };
+      // TransactionBuilder.build() decodes the source account, so it must be a valid G… key.
+      const sourceAccountId = actual.Keypair.random().publicKey();
       const horizon = {
         loadAccount: jest.fn().mockResolvedValue({
-          accountId: () => 'GTEST',
+          accountId: () => sourceAccountId,
           sequenceNumber: () => '1',
           incrementSequenceNumber: jest.fn(),
           sequence: '1',

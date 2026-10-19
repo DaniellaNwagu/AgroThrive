@@ -5,6 +5,8 @@ process.env.SOROBAN_CREATOR_EARNINGS_CONTRACT_ID =
 process.env.SOROBAN_XLM_TOKEN_CONTRACT_ID =
   process.env.SOROBAN_XLM_TOKEN_CONTRACT_ID || 'CCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM';
 
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockQuery } = require('./setup');
 const stellar = jest.requireMock('../src/utils/stellar');
 const jwt = require('jsonwebtoken');
@@ -186,7 +188,8 @@ describe('POST /api/creator-earnings/:address/claim — idempotency (#1027)', ()
 
   test("403 if the address belongs to a different farmer", async () => {
     getCachedResponse.mockResolvedValueOnce(null);
-    mockQuery.mockResolvedValueOnce({ rows: [{ ...farmerRow, id: 2 }], rowCount: 1 });
+    // The address is farmer 1's; the request is authenticated as farmer 2.
+    mockQuery.mockResolvedValueOnce({ rows: [farmerRow], rowCount: 1 });
 
     const res = await request(app)
       .post(`/api/creator-earnings/${FARMER_ADDRESS}/claim`)

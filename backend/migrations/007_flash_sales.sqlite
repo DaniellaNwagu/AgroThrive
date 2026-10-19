@@ -1,0 +1,3 @@
+-- SQLite variant of 007_flash_sales.sql (one column per ALTER TABLE).
+ALTER TABLE products ADD COLUMN flash_sale_price REAL;
+ALTER TABLE products ADD COLUMN flash_sale_ends_at TIMESTAMP;

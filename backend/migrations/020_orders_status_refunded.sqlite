@@ -1,0 +1,3 @@
+-- SQLite variant of 020_orders_status_refunded.sql. SQLite cannot alter CHECK
+-- constraints, and the orders CHECK in 001_initial_schema already allows 'refunded'.
+SELECT 1;

@@ -45,11 +45,22 @@ export default function Navbar() {
   // Live updates via SSE — increment on new_message
   useEffect(() => {
     if (!user || typeof EventSource === 'undefined' || typeof api.getMessagesStreamUrl !== 'function') return;
-    const es = new EventSource(api.getMessagesStreamUrl());
-    es.addEventListener('new_message', () => {
-      setUnreadCount(c => c + 1);
-    });
-    return () => es.close();
+    let cancelled = false;
+    let es = null;
+    // The URL carries a short-lived stream token that has to be fetched first (#1170).
+    Promise.resolve(api.getMessagesStreamUrl())
+      .then((url) => {
+        if (cancelled || !url) return;
+        es = new EventSource(url);
+        es.addEventListener('new_message', () => {
+          setUnreadCount(c => c + 1);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      es?.close();
+    };
   }, [user]);
 
   // Refresh the count whenever messages are marked read elsewhere in the app
@@ -134,7 +145,7 @@ export default function Navbar() {
         end
         style={({ isActive }) => (isActive ? { ...s.brand, textDecoration: 'underline' } : s.brand)}
       >
-        🌿 GoGreen
+        🌿 AgroThrive
       </NavLink>
       {network && network !== 'mainnet' && (
         <span style={{

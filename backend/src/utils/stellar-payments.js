@@ -56,7 +56,7 @@ async function sendPayment({ senderSecret, receiverPublicKey, amount, memo, requ
         amount: farmerAmount.toFixed(7),
       })
     )
-    .addMemo(StellarSdk.Memo.text(memo || 'GoGreen'))
+    .addMemo(StellarSdk.Memo.text(memo || 'AgroThrive'))
     .setTimeout(30);
 
   if (feeAmount > 0 && platformWallet) {
@@ -248,7 +248,7 @@ async function pathPayment({ senderSecret, sourceAssetCode, sourceAssetIssuer, s
         destAmount: parseFloat(destAmount).toFixed(7),
       })
     )
-    .addMemo(StellarSdk.Memo.text(memo || 'GoGreen'))
+    .addMemo(StellarSdk.Memo.text(memo || 'AgroThrive'))
     .setTimeout(30)
     .build();
   tx.sign(keypair);

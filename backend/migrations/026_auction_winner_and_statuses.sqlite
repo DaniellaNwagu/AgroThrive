@@ -1,0 +1,39 @@
+-- SQLite variant of 026_auction_winner_and_statuses.sql.
+-- SQLite cannot alter a CHECK constraint, so rebuild `auctions` with the new
+-- statuses and the winner_id column. Foreign keys are switched off for the
+-- rebuild so dropping the old table cannot cascade-delete `bids`.
+PRAGMA foreign_keys = OFF;
+
+CREATE TABLE auctions_new (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id        INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  farmer_id         INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+  start_price       REAL    NOT NULL CHECK(start_price > 0),
+  reserve_price     REAL,
+  min_increment     REAL    NOT NULL DEFAULT 0,
+  current_bid       REAL,
+  highest_bidder_id INTEGER REFERENCES users(id),
+  status            TEXT    NOT NULL DEFAULT 'active'
+                    CHECK(status IN ('active','closed','cancelled','ended','ended_no_sale')),
+  ends_at           DATETIME NOT NULL,
+  closed_at         DATETIME,
+  winner_notified   INTEGER NOT NULL DEFAULT 0,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  winner_id         INTEGER REFERENCES users(id)
+);
+
+INSERT INTO auctions_new (id, product_id, farmer_id, start_price, reserve_price, min_increment,
+                          current_bid, highest_bidder_id, status, ends_at, closed_at,
+                          winner_notified, created_at)
+SELECT id, product_id, farmer_id, start_price, reserve_price, min_increment,
+       current_bid, highest_bidder_id, status, ends_at, closed_at,
+       winner_notified, created_at
+FROM auctions;
+
+DROP TABLE auctions;
+ALTER TABLE auctions_new RENAME TO auctions;
+
+CREATE INDEX IF NOT EXISTS idx_auctions_status_ends_at
+  ON auctions (status, ends_at);
+
+PRAGMA foreign_keys = ON;

@@ -6,6 +6,8 @@
  */
 
 const jwt = require('jsonwebtoken');
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockDb, mockQuery, getCsrf } = require('./setup');
 
 const SECRET = process.env.JWT_SECRET || 'test-secret-for-jest';
@@ -39,10 +41,10 @@ describe('GET /api/bundles', () => {
     const bundle = { id: 1, name: 'Veggie Box', price: 20, farmer_name: 'Alice' };
     const items  = [{ product_id: 5, quantity: 2, product_name: 'Carrot', unit: 'kg', stock: 10 }];
 
-    // first prepare call → .all() for bundles; second → .all(id) for items
-    mockDb.prepare
-      .mockReturnValueOnce({ all: jest.fn().mockReturnValue([bundle]) })
-      .mockReturnValueOnce({ all: jest.fn().mockReturnValue(items) });
+    // first query → bundles; second → that bundle's items
+    mockQuery
+      .mockResolvedValueOnce({ rows: [bundle], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: items, rowCount: items.length });
 
     const res = await request(app).get('/api/bundles');
     expect(res.status).toBe(200);
@@ -128,13 +130,13 @@ describe('POST /api/bundles', () => {
 
   it('creates a bundle and returns 201', async () => {
     const { token: csrf, cookieStr } = await getCsrf();
-    // product ownership check passes (farmer_id === 1)
-    mockDb.prepare.mockReturnValue({
-      get: jest.fn().mockReturnValue({ id: 3, farmer_id: 1 }),
-      all: jest.fn().mockReturnValue([]),
-      run: jest.fn().mockReturnValue({ lastInsertRowid: 7, changes: 1 }),
+    mockDb.withTransaction = jest.fn((work) => work(mockDb));
+    mockQuery.mockImplementation(async (sql) => {
+      // product ownership check passes (farmer_id === 1)
+      if (sql.startsWith('SELECT id, farmer_id FROM products')) return { rows: [{ id: 3, farmer_id: 1 }], rowCount: 1 };
+      if (sql.startsWith('INSERT INTO bundles')) return { rows: [{ id: 7 }], rowCount: 1 };
+      return { rows: [], rowCount: 1 };
     });
-    mockDb.transaction.mockImplementation((fn) => () => fn());
 
     const res = await request(app)
       .post('/api/bundles')
@@ -143,7 +145,9 @@ describe('POST /api/bundles', () => {
       .send(validPayload);
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
-    expect(res.body.id).toBeDefined();
+    expect(res.body.id).toBe(7);
+    expect(mockDb.withTransaction).toHaveBeenCalledTimes(1); // bundle + items are atomic
+    delete mockDb.withTransaction;
   });
 });
 
@@ -170,9 +174,9 @@ describe('DELETE /api/bundles/:id', () => {
 
   it('deletes own bundle and returns 200', async () => {
     const { token: csrf, cookieStr } = await getCsrf();
-    mockDb.prepare
-      .mockReturnValueOnce({ get: jest.fn().mockReturnValue({ id: 1, farmer_id: 1 }) })
-      .mockReturnValueOnce({ run: jest.fn().mockReturnValue({ changes: 1 }) });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 1, farmer_id: 1 }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const res = await request(app)
       .delete('/api/bundles/1')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -224,7 +228,7 @@ describe('GET /api/bundles/orders', () => {
   });
 
   it('returns buyer order history', async () => {
-    mockPrepare(null, [{ id: 1, bundle_name: 'Fruit Box', total_price: 15 }]);
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 1, bundle_name: 'Fruit Box', total_price: 15 }], rowCount: 1 });
     const res = await request(app)
       .get('/api/bundles/orders')
       .set('Authorization', `Bearer ${buyerToken}`);

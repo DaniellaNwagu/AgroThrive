@@ -1,0 +1,2 @@
+-- SQLite variant of 027_waitlist_entries_status.sql (no ADD COLUMN IF NOT EXISTS).
+ALTER TABLE waitlist_entries ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';

@@ -9,6 +9,9 @@
 
 'use strict';
 
+// tests/jest.setup.js stubs decryptUserSecretKey for route suites; test the real module here.
+jest.unmock('../utils/crypto');
+
 describe('utils/crypto', () => {
   let originalSecret;
 

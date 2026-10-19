@@ -1,10 +1,10 @@
-// PM2 ecosystem config for GoGreen
+// PM2 ecosystem config for AgroThrive
 // Usage:
 //   pm2 start ecosystem.config.js          # start
-//   pm2 reload gogreen         # zero-downtime reload
-//   pm2 restart gogreen        # full restart
-//   pm2 stop gogreen           # stop
-//   pm2 logs gogreen           # tail logs
+//   pm2 reload agrothrive         # zero-downtime reload
+//   pm2 restart agrothrive        # full restart
+//   pm2 stop agrothrive           # stop
+//   pm2 logs agrothrive           # tail logs
 //
 // After first start, run:
 //   pm2 startup    (follow the printed command)
@@ -18,7 +18,7 @@ module.exports = {
       // ----------------------------------------------------------------
       // Backend — Express API server (port 4000)
       // ----------------------------------------------------------------
-      name: 'gogreen',
+      name: 'agrothrive',
       script: 'src/index.js',
       cwd: './backend',
 

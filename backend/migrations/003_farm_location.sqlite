@@ -1,0 +1,4 @@
+-- SQLite variant of 003_farm_location.sql (SQLite has no ADD COLUMN IF NOT EXISTS).
+ALTER TABLE users ADD COLUMN latitude REAL;
+ALTER TABLE users ADD COLUMN longitude REAL;
+ALTER TABLE users ADD COLUMN farm_address TEXT;

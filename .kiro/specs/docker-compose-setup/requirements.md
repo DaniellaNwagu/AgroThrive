@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature adds a Docker Compose setup to the GoGreen project so that developers can start the entire stack (Node.js/Express backend + React/Vite frontend) with a single `docker-compose up` command. The setup supports hot reload via volume mounts, persists the SQLite database via a named volume, and is documented in the README.
+This feature adds a Docker Compose setup to the AgroThrive project so that developers can start the entire stack (Node.js/Express backend + React/Vite frontend) with a single `docker-compose up` command. The setup supports hot reload via volume mounts, persists the SQLite database via a named volume, and is documented in the README.
 
 ## Glossary
 

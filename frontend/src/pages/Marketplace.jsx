@@ -786,7 +786,7 @@ export default function Marketplace() {
         Skip to products
       </a>
       <Helmet>
-        <title>Marketplace – GoGreen</title>
+        <title>Marketplace – AgroThrive</title>
         <meta name="description" content="Browse fresh produce from local farmers. Buy vegetables, fruits, grains, dairy and more directly from the source." />
       </Helmet>
       <div
@@ -1547,7 +1547,7 @@ export default function Marketplace() {
           </div>
         </div>
       )}
-    </div>
       <RecentlyCompared />
+    </div>
   );
 }

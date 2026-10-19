@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GoGreen application currently has a database-backed idempotency system that stores keys in the `idempotency_keys` table. However, the system lacks automated TTL cleanup and may need optimization for multi-instance deployments. This design enhances the existing implementation with proper cleanup mechanisms, improved error handling, and performance optimizations.
+The AgroThrive application currently has a database-backed idempotency system that stores keys in the `idempotency_keys` table. However, the system lacks automated TTL cleanup and may need optimization for multi-instance deployments. This design enhances the existing implementation with proper cleanup mechanisms, improved error handling, and performance optimizations.
 
 ## Architecture
 

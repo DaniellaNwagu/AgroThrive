@@ -10,6 +10,8 @@
  *    rejects freshly-banned users with 403 (session rejection)
  */
 
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 jest.mock('../src/db/schema', () => ({ query: jest.fn() }));
 
 const express = require('express');

@@ -7,7 +7,10 @@ const { decryptUserSecretKey } = require('../utils/crypto');
 
 // Run fn(q) atomically on Postgres; SQLite (single writer) runs statements directly.
 async function withTx(fn) {
-  if (!db.isPostgres) return fn((sql, params) => db.query(sql, params));
+  if (!db.isPostgres) {
+    if (typeof db.withTransaction !== 'function') return fn((sql, params) => db.query(sql, params));
+    return db.withTransaction((tx) => fn((sql, params) => tx.query(sql, params)));
+  }
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
