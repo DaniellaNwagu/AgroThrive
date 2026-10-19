@@ -43,7 +43,7 @@ function LazyMapView(props) {
     </div>
   );
 }
-import QRCode from 'qrcode.react';
+import { QRCodeSVG as QRCode } from 'qrcode.react';
 import { useReviewForm } from '../hooks/useReviewForm';
 import { usePaymentLink } from '../hooks/usePaymentLink';
 import { addRecentlyViewed } from '../utils/recentlyViewed';
