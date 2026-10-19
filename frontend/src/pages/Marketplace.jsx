@@ -1547,7 +1547,7 @@ export default function Marketplace() {
           </div>
         </div>
       )}
-    </div>
       <RecentlyCompared />
+    </div>
   );
 }

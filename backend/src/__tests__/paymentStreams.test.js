@@ -7,6 +7,17 @@ process.env.NODE_ENV = 'test';
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
+
+jest.mock('../middleware/auth', () => require('../../tests/helpers/jwtOnlyAuth'));
+
+// Override the global routes mock to include the payment-streams router
+jest.mock('../routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.use('/api/paymentStreams', require('../routes/paymentStreams'));
+  return router;
+});
+
 const app = require('../app');
 
 const mockDb = jest.requireMock('../db/schema');
@@ -17,8 +28,8 @@ const recipientToken = jwt.sign({ id: 2, role: 'buyer' }, process.env.JWT_SECRET
 const outsiderToken = jwt.sign({ id: 3, role: 'buyer' }, process.env.JWT_SECRET);
 
 const VALID_CONTRACT_ID = 'C'.padEnd(56, 'A'); // 56 character contract ID
-const SENDER_ADDRESS = 'GSENDER123';
-const RECIPIENT_ADDRESS = 'GRECIPIENT456';
+const SENDER_ADDRESS = 'GDAFDTNVDNLVYZCES7CVCDSI2SUZZCYN5ZNWIG4CZTQYRGBCGFGMDHFE';
+const RECIPIENT_ADDRESS = 'GANBGPVQ2OV6QNOJHOLCXO7QREMZF6IYHA4LZOJIAL64NPYNT732BTG4';
 
 describe('POST /api/paymentStreams', () => {
   beforeEach(() => {
@@ -101,7 +112,7 @@ describe('POST /api/paymentStreams', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/rate_per_second must be a positive number/i);
+    expect(res.body.message).toMatch(/rate_per_second must be a positive number/i);
   });
 
   it('returns 400 for non-positive deposit', async () => {
@@ -117,7 +128,7 @@ describe('POST /api/paymentStreams', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/deposit must be a positive number/i);
+    expect(res.body.message).toMatch(/deposit must be a positive number/i);
   });
 
   it('returns 400 for end_time in the past', async () => {
@@ -133,7 +144,7 @@ describe('POST /api/paymentStreams', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/end_time must be a future unix timestamp/i);
+    expect(res.body.message).toMatch(/end_time must be a future unix timestamp/i);
   });
 
   it('returns 400 when sender and recipient are the same', async () => {
@@ -158,7 +169,7 @@ describe('POST /api/paymentStreams', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/sender and recipient must differ/i);
+    expect(res.body.message).toMatch(/sender and recipient must differ/i);
   });
 
   it('returns 400 when user has no Stellar wallet', async () => {
@@ -283,7 +294,7 @@ describe('GET /api/paymentStreams/:contractId/:streamId/accrued', () => {
       .set('Authorization', `Bearer ${senderToken}`);
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Invalid streamId/i);
+    expect(res.body.message).toMatch(/Invalid streamId/i);
   });
 });
 
@@ -347,7 +358,7 @@ describe('PATCH /api/paymentStreams/:contractId/:streamId/rate', () => {
       .send({ new_rate: 0.005 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/Only the stream sender can decrease the rate/i);
+    expect(res.body.message).toMatch(/Only the stream sender can decrease the rate/i);
   });
 
   it('returns 400 when new_rate is not less than current rate', async () => {
@@ -368,7 +379,7 @@ describe('PATCH /api/paymentStreams/:contractId/:streamId/rate', () => {
       .send({ new_rate: 0.02 }); // Higher than current
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/new_rate must be less than the current rate/i);
+    expect(res.body.message).toMatch(/new_rate must be less than the current rate/i);
   });
 });
 
@@ -428,7 +439,7 @@ describe('POST /api/paymentStreams/:contractId/:streamId/withdraw', () => {
       .set('Authorization', `Bearer ${senderToken}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/Only the stream recipient can withdraw/i);
+    expect(res.body.message).toMatch(/Only the stream recipient can withdraw/i);
   });
 });
 
@@ -488,6 +499,6 @@ describe('POST /api/paymentStreams/:contractId/:streamId/cancel', () => {
       .set('Authorization', `Bearer ${recipientToken}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/Only the stream sender can cancel/i);
+    expect(res.body.message).toMatch(/Only the stream sender can cancel/i);
   });
 });

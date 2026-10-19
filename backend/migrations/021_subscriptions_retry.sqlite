@@ -1,0 +1,18 @@
+-- SQLite variant of 021_subscriptions_retry.sql.
+-- No earlier migration creates `subscriptions`, so create it here in its final
+-- shape (retry columns + 'failed' status) when it is missing.
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  buyer_id      INTEGER NOT NULL,
+  product_id    INTEGER NOT NULL,
+  quantity      INTEGER NOT NULL,
+  frequency     TEXT NOT NULL CHECK(frequency IN ('weekly', 'biweekly', 'monthly')),
+  next_order_at DATETIME NOT NULL,
+  active        INTEGER NOT NULL DEFAULT 1,
+  status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'cancelled', 'failed')),
+  retry_count   INTEGER NOT NULL DEFAULT 0,
+  retry_after   DATETIME,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (buyer_id)   REFERENCES users(id)    ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);

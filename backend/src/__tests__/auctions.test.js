@@ -21,6 +21,8 @@ jest.mock('../middleware/auth', () => {
   };
 });
 
+jest.mock('../middleware/requireEmailVerified', () => (req, res, next) => next());
+
 // Override the global routes mock to include the auctions router
 jest.mock('../routes', () => {
   const express = require('express');
@@ -272,10 +274,10 @@ describe('POST /api/auctions/:id/bid', () => {
 
   it('places a valid bid', async () => {
     const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: null, min_increment: 0, highest_bidder_id: null };
-    mockDb.prepare
-      .mockReturnValueOnce({ get: jest.fn().mockReturnValue(auctionRow) }) // SELECT auction
-      .mockReturnValueOnce({ run: jest.fn() })                              // INSERT bid
-      .mockReturnValueOnce({ run: jest.fn() });                             // UPDATE auction
+    mockDb.query
+      .mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 }) // SELECT auction
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })           // conditional UPDATE auction
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });          // INSERT bid
 
     const res = await request(app)
       .post('/api/auctions/1/bid')
@@ -318,7 +320,7 @@ describe('POST /api/auctions/:id/bid', () => {
   });
 
   it('returns 404 when auction does not exist', async () => {
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(undefined) });
+    mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app)
       .post('/api/auctions/999/bid')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -329,7 +331,7 @@ describe('POST /api/auctions/:id/bid', () => {
 
   it('returns 400 when bid is too low', async () => {
     const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: 20, min_increment: 0, highest_bidder_id: null };
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(auctionRow) });
+    mockDb.query.mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 });
     const res = await request(app)
       .post('/api/auctions/1/bid')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -340,7 +342,7 @@ describe('POST /api/auctions/:id/bid', () => {
 
   it('returns 400 when bid is below min_increment', async () => {
     const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: 20, min_increment: 5, highest_bidder_id: null };
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(auctionRow) });
+    mockDb.query.mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 });
     const res = await request(app)
       .post('/api/auctions/1/bid')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -351,7 +353,7 @@ describe('POST /api/auctions/:id/bid', () => {
 
   it('returns 400 when buyer is already the highest bidder', async () => {
     const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: 20, min_increment: 0, highest_bidder_id: 2 };
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(auctionRow) });
+    mockDb.query.mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 });
     const res = await request(app)
       .post('/api/auctions/1/bid')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -360,12 +362,26 @@ describe('POST /api/auctions/:id/bid', () => {
     expect(res.body.code).toBe('already_highest');
   });
 
+  it('returns 409 when another bid lands between the read and the conditional update', async () => {
+    const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: null, min_increment: 0, highest_bidder_id: null };
+    mockDb.query
+      .mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // current_bid changed underneath us
+    const res = await request(app)
+      .post('/api/auctions/1/bid')
+      .set('Authorization', `Bearer ${buyerToken}`)
+      .send({ amount: 15 });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('bid_conflict');
+    expect(mockDb.query).toHaveBeenCalledTimes(2); // no bid row inserted
+  });
+
   it('returns 403 when auction owner tries to bid', async () => {
     // farmer_id: 1, buyerId from farmerToken is also 1 — but farmerToken role is 'farmer'
     // so the role check fires first. Test with a buyer whose id matches farmer_id.
     const ownerBuyerToken = jwt.sign({ id: 1, role: 'buyer' }, SECRET);
     const auctionRow = { ...activeAuction, farmer_id: 1, current_bid: null, min_increment: 0, highest_bidder_id: null };
-    mockDb.prepare.mockReturnValueOnce({ get: jest.fn().mockReturnValue(auctionRow) });
+    mockDb.query.mockResolvedValueOnce({ rows: [auctionRow], rowCount: 1 });
     const res = await request(app)
       .post('/api/auctions/1/bid')
       .set('Authorization', `Bearer ${ownerBuyerToken}`)

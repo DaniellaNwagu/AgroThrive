@@ -1,8 +1,8 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config');
-const User = require('../models/User');
+const { jwtSecret } = require('../config');
+const db = require('../db/schema');
 
 // Per-user cap on concurrent SSE connections. When exceeded, the oldest
 // connection is closed so a single account cannot exhaust server resources
@@ -66,7 +66,7 @@ async function sseAuth(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, jwtSecret);
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired stream token' });
   }
@@ -77,19 +77,23 @@ async function sseAuth(req, res, next) {
   }
 
   try {
-    const user = await User.findById(payload.sub || payload.id);
+    const { rows } = await db.query(
+      'SELECT id, role, active, banned_at FROM users WHERE id = $1',
+      [payload.sub || payload.id]
+    );
+    const user = rows[0];
     if (!user) {
       return res.status(401).json({ error: 'Invalid stream token' });
     }
-    if (user.banned || user.isBanned) {
+    if (user.banned_at) {
       return res.status(403).json({ error: 'Account is banned' });
     }
-    if (user.active === false || user.isActive === false) {
+    if (user.active !== 1 && user.active !== true) {
       return res.status(403).json({ error: 'Account is not active' });
     }
 
-    req.user = user;
-    req.userId = user.id || user._id;
+    req.user = { id: user.id, role: user.role };
+    req.userId = user.id;
     return next();
   } catch (err) {
     return res.status(500).json({ error: 'Failed to authenticate stream token' });

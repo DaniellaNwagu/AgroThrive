@@ -15,6 +15,21 @@ const mockDb = {
   getClient: jest.fn(),
 };
 jest.mock('../db/schema', () => mockDb);
+jest.mock('../middleware/auth', () => require('../../tests/helpers/jwtOnlyAuth'));
+
+// Mount the guard in front of a stand-in for the orders router whose only work
+// is the product lookup the assertions below count as "the next middleware".
+jest.mock('../routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.use('/api/orders', require('../routes/orderBudgetGuard'));
+  router.post('/api/orders', async (req, res) => {
+    const db = require('../db/schema');
+    await db.query('SELECT * FROM products WHERE id = $1', [req.body.product_id]);
+    res.status(404).json({ success: false, code: 'not_found' });
+  });
+  return router;
+});
 
 const app = require('../app');
 

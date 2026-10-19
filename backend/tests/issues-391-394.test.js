@@ -3,6 +3,8 @@
  */
 
 const jwt = require('jsonwebtoken');
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockQuery, getCsrf } = require('./setup');
 const stellar = jest.requireMock('../src/utils/stellar');
 const mockDb = jest.requireMock('../src/db/schema');

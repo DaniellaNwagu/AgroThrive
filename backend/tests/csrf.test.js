@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockQuery, getCsrf } = require('./setup');
 const { EXEMPT_SUFFIXES } = require('../src/middleware/csrf');
 

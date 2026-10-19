@@ -678,6 +678,7 @@ export default function ProductDetail() {
       quantity: qty,
       address_id: selectedAddressId || undefined,
       coupon_code: couponResult ? couponCode.trim() : undefined,
+      payment_method: 'sep7',
     };
     const idempotencyKey = walletAttempt.keyFor(orderBody);
     setWalletLoading(true);
@@ -690,17 +691,6 @@ export default function ProductDetail() {
         walletAttempt.settle(e);
         throw e;
       }
-      const idempotencyKey = globalThis.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
-        const value = Math.floor(Math.random() * 16);
-        return (character === 'x' ? value : (value & 0x3) | 0x8).toString(16);
-      });
-      const orderRes = await api.placeOrder({
-        product_id: product.id,
-        quantity: qty,
-        address_id: selectedAddressId || undefined,
-        coupon_code: couponResult ? couponCode.trim() : undefined,
-        payment_method: 'sep7',
-      }, idempotencyKey);
       const linkRes = await api.getOrderPaymentLink(orderRes.orderId);
       setWalletOrderId(orderRes.orderId);
       setPaymentLink(linkRes.paymentLink);

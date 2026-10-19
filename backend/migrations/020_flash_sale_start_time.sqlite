@@ -1,0 +1,2 @@
+-- SQLite variant of 020_flash_sale_start_time.sql (no ADD COLUMN IF NOT EXISTS).
+ALTER TABLE products ADD COLUMN flash_sale_starts_at TIMESTAMP;

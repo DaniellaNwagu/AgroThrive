@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const jwt = require('jsonwebtoken');
 const db = require('../db/schema');
 const auth = require('../middleware/auth');
 const requireEmailVerified = require('../middleware/requireEmailVerified');
@@ -155,7 +156,21 @@ async function listProducts(req, res) {
   res.json(payload);
 }
 
-router.get('/', listProducts);
+// Public listing, but a valid bearer token selects the role-specific view and
+// cache entry (#388). Bad or missing tokens fall back to the public view.
+function optionalAuth(req, _res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET, { clockTolerance: 30 });
+    } catch {
+      req.user = undefined;
+    }
+  }
+  next();
+}
+
+router.get('/', optionalAuth, listProducts);
 
 // GET /api/products/allergens — returns the canonical allergen whitelist
 router.get('/allergens', (req, res) => {
@@ -304,7 +319,7 @@ router.post('/', auth, requireEmailVerified, validate.product, async (req, res) 
   }
 
   await cache.delByPattern('products:*');
-  res.json({ id: productId, message: 'Product listed' });
+  res.json({ success: true, id: productId, message: 'Product listed' });
 });
 
 // PUT /api/products/:id/schedule - farmer sets or updates pre-order availability

@@ -43,13 +43,13 @@ describe('migration runner failure recovery', () => {
 
   it('uses a SQLite-specific migration when one is present', async () => {
     fs.writeFileSync(path.join(dir, '004_dialect.sql'), 'CREATE TABLE wrong_dialect (id INTEGER);');
-    fs.writeFileSync(path.join(dir, '004_dialect.sqlite'), 'CREATE TABLE sqlite_dialect (id INTEGER);');
+    fs.writeFileSync(path.join(dir, '004_dialect.sqlite'), 'CREATE TABLE dialect_sqlite (id INTEGER);');
 
     await runMigrations(db, dir);
 
     expect(sqlite.prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_dialect'"
-    ).get()).toEqual({ name: 'sqlite_dialect' });
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'dialect_sqlite'"
+    ).get()).toEqual({ name: 'dialect_sqlite' });
     expect(sqlite.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'wrong_dialect'"
     ).get()).toBeUndefined();

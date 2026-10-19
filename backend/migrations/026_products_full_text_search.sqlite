@@ -1,0 +1,3 @@
+-- SQLite variant of 026_products_full_text_search.sql. tsvector/GIN are
+-- PostgreSQL-only; on SQLite the product search falls back to LIKE matching.
+SELECT 1;

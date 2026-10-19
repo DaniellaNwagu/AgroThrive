@@ -261,11 +261,15 @@ async function getHealthCheckResponse(includeVersion = false, requestId) {
  */
 const API_V0_SUNSET = process.env.API_V0_SUNSET || '2027-03-31';
 
+const API_V0_SUNSET_HTTP_DATE = new Date(`${API_V0_SUNSET}T00:00:00Z`).toUTCString();
+
 /**
- * Add deprecation warn
+ * Add deprecation warning headers to /api endpoints.
+ * Clients should migrate to /api/v1.
+ */
 function addDeprecationHeaders(req, res, next) {
   res.setHeader('Deprecation', 'true');
-  res.setHeader('Sunset', new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toUTCString()); // 6 months
+  res.setHeader('Sunset', API_V0_SUNSET_HTTP_DATE);
   res.setHeader('X-API-Warn', 'The /api endpoint prefix is deprecated. Please use /api/v1 instead.');
   next();
 }
@@ -354,7 +358,9 @@ router.use('/federation', require('./federation'));
 registerRoute('/', '/auth', require('./auth'));
 // Fixed /products paths must precede products.js, whose /:id handlers would swallow them (#1368)
 registerRoute('/', '/products', require('./productExtras'));
-registerRoute('/', '', require('./export'));
+const exportRoutes = require('./export');
+registerRoute('/', '/products', exportRoutes.productsRouter);
+registerRoute('/', '/orders', exportRoutes.ordersRouter);
 registerRoute('/', '/products/bulk', require('./bulkUpload'));
 registerRoute('/', '/products/import', require('./productImport'));
 registerRoute('/', '/products', require('./productVideos'));
@@ -365,8 +371,6 @@ registerRoute('/', '/products/market', require('./market'));
 registerRoute('/', '/auth', require('./emailVerification'));
 registerRoute('/', '/auth', require('./authPasswordReset'));
 registerRoute('/', '/products', require('./products'));
-registerRoute('/', '/products', require('./flashSales'));
-registerRoute('/', '/products', require('./productShare'));
 registerRoute('/', '/orders', require('./orderBudgetGuard'));
 registerRoute('/', '/orders', require('./orders'));
 registerRoute('/', '/orders/:id/return', require('./returns'));
@@ -393,38 +397,24 @@ registerRoute('/', '/escrow', require('./escrow'));
 registerRoute('/', '/creator-earnings', require('./creatorEarnings'));
 registerRoute('/', '/paymentStreams', require('./paymentStreams'));
 registerRoute('/', '/streams', require('./streams'));
-registerRoute('/', '/products/bulk', require('./bulkUpload'));
 registerRoute('/', '/coupons', require('./coupons'));
 registerRoute('/', '/alerts', require('./alerts'));
-registerRoute('/', '', require('./reviews'));
-registerRoute('/', '/products/import', require('./productImport'));
 const reviewRoutes = require('./reviews');
 registerRoute('/', '/reviews', reviewRoutes);
 registerRoute('/', '/admin/reviews', reviewRoutes.adminRouter);
 registerRoute('/', '/products', reviewRoutes.productRouter);
 registerRoute('/', '/network', require('./network'));
 registerRoute('/', '/batches', require('./batches'));
-registerRoute('/', '/products', require('./productVideos'));
-registerRoute('/', '/products/:id/calendar', require('./calendar'));
-registerRoute('/', '/calendar', require('./calendar'));
-registerRoute('/', '/wallet', require('./walletBudget'));
-registerRoute('/', '/products/market', require('./market'));
 registerRoute('/', '/calendar', require('./calendar'));
 registerRoute('/', '/wallet', require('./walletBudget'));
 registerRoute('/', '/market', require('./market'));
 registerRoute('/', '/subscriptions', require('./subscriptions').router);
 registerRoute('/', '/bundles', require('./bundles'));
 registerRoute('/', '/farmers/bundles', require('./bundleDiscounts'));
-const exportRoutes = require('./export');
-registerRoute('/', '/products', exportRoutes.productsRouter);
-registerRoute('/', '/orders', exportRoutes.ordersRouter);
 registerRoute('/', '/announcements', require('./announcements'));
 registerRoute('/', '/auctions', require('./auctions'));
-registerRoute('/', '/disputes', require('./disputes'));
 
 registerRoute('/', '/categories', require('./categories'));
-
-/* … truncated 6657 chars — edit only what you need near the top … */
 
 module.exports = router;
 module.exports.limiters = {

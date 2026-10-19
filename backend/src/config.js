@@ -102,7 +102,7 @@ try {
 } catch (err) {
   if (err instanceof ZodError) {
     console.error('[config] Invalid or missing environment variables:');
-    err.errors.forEach(e => {
+    err.issues.forEach(e => {
       console.error(`  ${e.path.join('.') || '(root)'}: ${e.message}`);
     });
     console.error('[config] Copy backend/.env.example to backend/.env and fill in the required values.');

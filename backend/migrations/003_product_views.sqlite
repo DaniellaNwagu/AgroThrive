@@ -1,0 +1,11 @@
+-- SQLite variant of 003_product_views.sql: SQLite forbids expressions in a
+-- table-level UNIQUE constraint, so the one-view-per-day rule is a unique index.
+CREATE TABLE IF NOT EXISTS product_views (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  viewed_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_views_user_product_day
+  ON product_views (user_id, product_id, date(viewed_at));

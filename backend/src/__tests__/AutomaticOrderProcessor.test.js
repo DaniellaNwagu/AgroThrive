@@ -5,6 +5,8 @@
  * for waitlist entries when products are restocked.
  */
 
+// tests/jest.setup.js stubs this service for route suites; test the real class here.
+jest.unmock('../services/AutomaticOrderProcessor');
 const AutomaticOrderProcessor = require('../services/AutomaticOrderProcessor');
 const db = require('../db/schema');
 
@@ -90,7 +92,7 @@ describe('AutomaticOrderProcessor', () => {
         .mockResolvedValueOnce() // BEGIN transaction
         .mockResolvedValueOnce({ rowCount: 1 }) // Update stock
         .mockResolvedValueOnce({
-          rows: [{ id: 1001, ...mockWaitlistEntry, total_price: 21.0, status: 'pending' }],
+          rows: [{ ...mockWaitlistEntry, id: 1001, total_price: 21.0, status: 'pending' }],
         }) // Insert order
         .mockResolvedValueOnce() // Update order with payment
         .mockResolvedValueOnce(); // COMMIT transaction
@@ -111,7 +113,7 @@ describe('AutomaticOrderProcessor', () => {
         senderSecret: mockBuyer.stellar_secret_key,
         receiverPublicKey: mockFarmer.stellar_public_key,
         amount: 21.0,
-        memo: 'AutoOrder#1001',
+        memo: 'Order#1001',
       });
 
       // Verify notifications were sent
@@ -175,7 +177,7 @@ describe('AutomaticOrderProcessor', () => {
         .mockResolvedValueOnce() // BEGIN transaction
         .mockResolvedValueOnce({ rowCount: 1 }) // Update stock
         .mockResolvedValueOnce({
-          rows: [{ id: 1001, ...mockWaitlistEntry, total_price: 21.0, status: 'pending' }],
+          rows: [{ ...mockWaitlistEntry, id: 1001, total_price: 21.0, status: 'pending' }],
         }) // Insert order
         .mockResolvedValueOnce(); // ROLLBACK transaction
 
@@ -216,7 +218,7 @@ describe('AutomaticOrderProcessor', () => {
         .mockResolvedValueOnce() // BEGIN transaction
         .mockResolvedValueOnce({ rowCount: 1 }) // Update stock
         .mockResolvedValueOnce({
-          rows: [{ id: 1001, ...mockWaitlistEntry, total_price: 21.0, status: 'pending' }],
+          rows: [{ ...mockWaitlistEntry, id: 1001, total_price: 21.0, status: 'pending' }],
         }) // Insert order
         .mockResolvedValueOnce() // Update order with escrow details
         .mockResolvedValueOnce(); // COMMIT transaction
@@ -251,7 +253,7 @@ describe('AutomaticOrderProcessor', () => {
         .mockResolvedValueOnce() // BEGIN transaction
         .mockResolvedValueOnce({ rowCount: 1 }) // Update stock
         .mockResolvedValueOnce({
-          rows: [{ id: 1001, ...mockWaitlistEntry, total_price: 21.0, status: 'pending' }],
+          rows: [{ ...mockWaitlistEntry, id: 1001, total_price: 21.0, status: 'pending' }],
         }) // Insert order
         .mockResolvedValueOnce() // Mark order escrow_failed
         .mockResolvedValueOnce() // Restore stock
@@ -294,7 +296,7 @@ describe('AutomaticOrderProcessor', () => {
         senderSecret: mockBuyer.stellar_secret_key,
         receiverPublicKey: mockFarmer.stellar_public_key,
         amount: mockOrder.total_price,
-        memo: 'AutoOrder#1001',
+        memo: 'Order#1001',
       });
     });
 

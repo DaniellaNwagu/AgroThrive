@@ -5,6 +5,8 @@
  * These tests verify the AutomaticOrderProcessor works with the real system components.
  */
 
+// tests/jest.setup.js stubs this service for route suites; test the real class here.
+jest.unmock('../services/AutomaticOrderProcessor');
 const AutomaticOrderProcessor = require('../services/AutomaticOrderProcessor');
 const WaitlistService = require('../services/WaitlistService');
 
@@ -256,9 +258,9 @@ describe('#805 — AutomaticOrderProcessor waitlist processing', () => {
     expect(result.success).toBe(false);
     expect(result.code).toBe('INSUFFICIENT_BALANCE');
 
-    // Verify UPDATE payment_failed was called
+    // Verify the order was marked payment_failed (status is a bound parameter)
+    expect(db.query).toHaveBeenCalledWith('UPDATE orders SET status = $1 WHERE id = $2', ['payment_failed', 99]);
     const calls = db.query.mock.calls.map(([sql]) => sql);
-    expect(calls.some((s) => s.includes('payment_failed'))).toBe(true);
     // Verify stock was restored
     expect(calls.some((s) => s.includes('quantity = quantity +'))).toBe(true);
   });

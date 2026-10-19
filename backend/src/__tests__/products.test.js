@@ -15,7 +15,12 @@ jest.mock('../cache', () => ({
   get: jest.fn().mockResolvedValue(null),
   set: jest.fn().mockResolvedValue(undefined),
   del: jest.fn().mockResolvedValue(undefined),
+  delByPattern: jest.fn().mockResolvedValue(undefined),
 }));
+
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../middleware/auth', () => require('../../tests/helpers/jwtOnlyAuth'));
+jest.mock('../middleware/requireEmailVerified', () => (req, res, next) => next());
 
 // Mount only the products router to avoid loading broken sibling route files
 jest.mock('../routes', () => {
@@ -333,9 +338,8 @@ describe('GET /api/products — cache role isolation (#388)', () => {
     expect(buyerRes.status).toBe(200);
     expect(buyerRes.body.data[0].low_stock_threshold).toBeUndefined();
 
-    // Verify the two cache.set calls used different keys
-    const setCalls = mockCache.set.mock.calls;
-    const keys = setCalls.map(([k]) => k);
+    // Verify the two requests looked up different cache keys
+    const keys = mockCache.get.mock.calls.map(([k]) => k);
     expect(keys.some((k) => k.includes(':farmer:'))).toBe(true);
     expect(keys.some((k) => k.includes(':buyer:'))).toBe(true);
   });
@@ -382,6 +386,10 @@ describe('GET /api/products?q= — full-text search (#803)', () => {
     const countCall = mockDb.query.mock.calls[0][0];
     expect(countCall).toMatch(/LIKE/); // seller filter
     mockDb.isPostgres = undefined;
+  });
+});
+
+// ---------------------------------------------------------------------------
 // #835 — allergens endpoint and PATCH allergen validation
 // ---------------------------------------------------------------------------
 describe('GET /api/products/allergens', () => {

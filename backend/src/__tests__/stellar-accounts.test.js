@@ -61,6 +61,16 @@ jest.mock('../utils/stellar-config', () => {
   };
 });
 
+// tests/jest.setup.js calls jest.resetAllMocks() before every test, which wipes
+// the implementations given in the factory above; restore them here.
+beforeEach(() => {
+  const { StellarSdk } = require('../utils/stellar-config');
+  const mockKeypair = { publicKey: () => 'GPUBKEY123', secret: () => 'SSECRET123' };
+  StellarSdk.Keypair.random.mockImplementation(() => mockKeypair);
+  StellarSdk.Keypair.fromSecret.mockImplementation(() => mockKeypair);
+  StellarSdk.StrKey.isValidEd25519PublicKey.mockImplementation((key) => key.startsWith('G'));
+});
+
 describe('stellar-accounts.js — createWallet', () => {
   it('returns a wallet with publicKey and secretKey', () => {
     const wallet = createWallet();
@@ -379,7 +389,7 @@ describe('stellar-accounts.js — lookupFederationAddress', () => {
   it('returns null when federation address not found', async () => {
     StellarSdk.FederationServer.resolve.mockRejectedValueOnce(new Error('Not found'));
 
-    const result = await lookupFederationAddress('GPUBKEY123');
+    const result = await lookupFederationAddress('GPUBKEY_NOT_FOUND');
     expect(result).toBeNull();
   });
 
@@ -393,8 +403,8 @@ describe('stellar-accounts.js — lookupFederationAddress', () => {
       stellar_address: 'alice*agrothrive.io',
     });
 
-    await lookupFederationAddress('GPUBKEY123');
-    const cachedResult = await lookupFederationAddress('GPUBKEY123');
+    await lookupFederationAddress('GPUBKEY_CACHED');
+    const cachedResult = await lookupFederationAddress('GPUBKEY_CACHED');
 
     expect(cachedResult).toBe('alice*agrothrive.io');
     expect(StellarSdk.FederationServer.resolve).toHaveBeenCalledTimes(1);
@@ -470,8 +480,8 @@ describe('stellar-accounts.js — resolveFederationAddress', () => {
       account_id: 'GREMOTE123',
     });
 
-    await resolveFederationAddress('bob*remote.io', mockDb);
-    const cachedResult = await resolveFederationAddress('bob*remote.io', mockDb);
+    await resolveFederationAddress('carol*remote.io', mockDb);
+    const cachedResult = await resolveFederationAddress('carol*remote.io', mockDb);
 
     expect(cachedResult.publicKey).toBe('GREMOTE123');
     expect(StellarSdk.Federation.Server.resolve).toHaveBeenCalledTimes(1);

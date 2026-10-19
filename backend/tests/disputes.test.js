@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+// db.query is scripted per test; skip auth's active-user lookup.
+jest.mock('../src/middleware/auth', () => require('./helpers/jwtOnlyAuth'));
 const { request, app, mockDb } = require('./setup');
 const mailer = jest.requireMock('../src/utils/mailer');
 

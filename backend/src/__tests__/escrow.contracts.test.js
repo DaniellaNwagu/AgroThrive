@@ -752,7 +752,7 @@ describeOrSkip('Escrow contract — full lifecycle (local Soroban sandbox)', () 
 
       // The function should fail or return error; test doesn't throw means contract rejected
       expect(result === undefined || result === null || result === 0).toBeDefined();
-    }, 30_000).pend('awaiting timeout');
+    }, 30_000);
 
     test('claim_timeout_refund succeeds after timeout reached', async () => {
       if (!contractId) return;
