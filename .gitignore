@@ -4,7 +4,7 @@ node_modules/
 dist/
 
 # Nested repo clone (accidental duplicate)
-GoGreen/
+AgroThrive/
 
 # Playwright
 frontend/playwright-report/

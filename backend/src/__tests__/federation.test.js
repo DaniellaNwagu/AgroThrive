@@ -29,10 +29,10 @@ describe('GET /federation', () => {
       ],
     });
 
-    const res = await request(app).get('/federation?q=farmer1*gogreen.example.com&type=name');
+    const res = await request(app).get('/federation?q=farmer1*agrothrive.example.com&type=name');
 
     expect(res.status).toBe(200);
-    expect(res.body.stellar_address).toBe('farmer1*gogreen.example.com');
+    expect(res.body.stellar_address).toBe('farmer1*agrothrive.example.com');
     expect(res.body.account_id).toBe('GABC123DEF456GHI789JKL');
   });
 
@@ -46,7 +46,7 @@ describe('GET /federation', () => {
       ],
     });
 
-    const res = await request(app).get('/federation?q=FARMER1*gogreen.example.com&type=name');
+    const res = await request(app).get('/federation?q=FARMER1*agrothrive.example.com&type=name');
 
     expect(res.status).toBe(200);
     expect(db.query).toHaveBeenCalledWith(
@@ -58,7 +58,7 @@ describe('GET /federation', () => {
   test('returns 404 when user not found', async () => {
     db.query.mockResolvedValue({ rows: [] });
 
-    const res = await request(app).get('/federation?q=nonexistent*gogreen.example.com&type=name');
+    const res = await request(app).get('/federation?q=nonexistent*agrothrive.example.com&type=name');
 
     expect(res.status).toBe(404);
     expect(res.body.detail).toBe('Not found');
@@ -74,14 +74,14 @@ describe('GET /federation', () => {
       ],
     });
 
-    const res = await request(app).get('/federation?q=farmer1*gogreen.example.com&type=name');
+    const res = await request(app).get('/federation?q=farmer1*agrothrive.example.com&type=name');
 
     expect(res.status).toBe(404);
     expect(res.body.detail).toBe('Not found');
   });
 
   test('rejects queries without type=name', async () => {
-    const res = await request(app).get('/federation?q=farmer1*gogreen.example.com&type=id');
+    const res = await request(app).get('/federation?q=farmer1*agrothrive.example.com&type=id');
 
     expect(res.status).toBe(400);
     expect(res.body.detail).toBe('Only type=name is supported');
@@ -104,7 +104,7 @@ describe('GET /federation', () => {
   test('handles database errors', async () => {
     db.query.mockRejectedValue(new Error('Database connection failed'));
 
-    const res = await request(app).get('/federation?q=farmer1*gogreen.example.com&type=name');
+    const res = await request(app).get('/federation?q=farmer1*agrothrive.example.com&type=name');
 
     expect(res.status).toBe(500);
     expect(res.body.detail).toBe('Database connection failed');

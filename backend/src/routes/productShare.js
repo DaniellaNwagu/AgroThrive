@@ -25,7 +25,7 @@ router.get('/:id/share', async (req, res) => {
   if (!product) return err(res, 404, 'Product not found', 'not_found');
 
   const url = buildShareUrl(product.id);
-  const title = `${product.name} on GoGreen`;
+  const title = `${product.name} on AgroThrive`;
   const description = product.description || `Fresh produce from ${product.farmer_name}`;
 
   res.json({

@@ -551,7 +551,7 @@ You can also visit the marketplace to purchase the available quantity if you'd l
 
 Thank you for your patience!
 
-GoGreen`;
+AgroThrive`;
 
       await transporter.sendMail({
         from: process.env.SMTP_FROM || process.env.SMTP_USER,

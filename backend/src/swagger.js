@@ -5,10 +5,10 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'GoGreen API',
+      title: 'AgroThrive API',
       version: '1.0.0',
       description:
-        'REST API for GoGreen, a platform where farmers list products and buyers pay using the Stellar Network (XLM).',
+        'REST API for AgroThrive, a platform where farmers list products and buyers pay using the Stellar Network (XLM).',
     },
     servers: [{ url: 'http://localhost:4000', description: 'Local dev server' }],
     components: {

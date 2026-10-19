@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-GoGreen currently has Soroban contracts in two top-level layouts:
+AgroThrive currently has Soroban contracts in two top-level layouts:
 
 - `contract/`: the legacy escrow crate used by the backend integration harness,
   Futurenet E2E script, CLI helper, and legacy WASM size profile.

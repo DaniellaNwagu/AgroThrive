@@ -32,7 +32,7 @@ describe('GET /api/network/identity', () => {
   it('returns name, version and public_key', async () => {
     const res = await request(app).get('/api/network/identity');
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('GoGreen');
+    expect(res.body.name).toBe('AgroThrive');
     expect(typeof res.body.version).toBe('string');
     expect(typeof res.body.public_key).toBe('string');
     expect(res.body.public_key).toHaveLength(64); // 32 bytes hex

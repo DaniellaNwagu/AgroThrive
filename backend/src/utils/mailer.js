@@ -74,13 +74,13 @@ Date:     ${new Date().toUTCString()}
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: buyer.email,
       subject,
-      text: `Hi ${buyer.name},\n\nYour order has been confirmed!\n\n${summary}\n\nDelivery instructions: Contact the farmer (${farmer.name}) to arrange delivery.\n\nThank you for shopping at GoGreen!`,
+      text: `Hi ${buyer.name},\n\nYour order has been confirmed!\n\n${summary}\n\nDelivery instructions: Contact the farmer (${farmer.name}) to arrange delivery.\n\nThank you for shopping at AgroThrive!`,
     }, 'order_confirmation', db),
     sendWithRetry({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: farmer.email,
       subject: `New Sale #${order.id} – ${product.name}`,
-      text: `Hi ${farmer.name},\n\nYou have a new sale!\n\nBuyer: ${buyer.name} (${buyer.email})\n\n${summary}\n\nPlease arrange delivery with the buyer at your earliest convenience.\n\nGoGreen`,
+      text: `Hi ${farmer.name},\n\nYou have a new sale!\n\nBuyer: ${buyer.name} (${buyer.email})\n\n${summary}\n\nPlease arrange delivery with the buyer at your earliest convenience.\n\nAgroThrive`,
     }, 'order_confirmation', db),
   ]);
 }
@@ -91,7 +91,7 @@ async function sendLowStockAlert({ product, farmer }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: farmer.email,
     subject: `⚠️ Low Stock Alert – ${product.name}`,
-    text: `Hi ${farmer.name},\n\nYour product "${product.name}" is running low on stock.\n\nCurrent quantity: ${product.quantity} ${product.unit}\nThreshold: ${product.low_stock_threshold} ${product.unit}\n\nPlease restock or update your listing.\n\nGoGreen`,
+    text: `Hi ${farmer.name},\n\nYour product "${product.name}" is running low on stock.\n\nCurrent quantity: ${product.quantity} ${product.unit}\nThreshold: ${product.low_stock_threshold} ${product.unit}\n\nPlease restock or update your listing.\n\nAgroThrive`,
   });
 }
 
@@ -101,7 +101,7 @@ async function sendStatusUpdateEmail({ order, product, buyer, newStatus }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: buyer.email,
     subject: `Order #${order.id} Status Update – ${newStatus.toUpperCase()}`,
-    text: `Hi ${buyer.name},\n\nYour order status has been updated.\n\nOrder #${order.id}\nProduct: ${product.name}\nNew Status: ${newStatus}\n\nThank you for shopping at GoGreen!`,
+    text: `Hi ${buyer.name},\n\nYour order status has been updated.\n\nOrder #${order.id}\nProduct: ${product.name}\nNew Status: ${newStatus}\n\nThank you for shopping at AgroThrive!`,
   });
 }
 
@@ -111,7 +111,7 @@ async function sendFreshnessAlert({ product, farmer, daysLeft }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: farmer.email,
     subject: `⚠️ Product Expiring Soon – ${product.name}`,
-    text: `Hi ${farmer.name},\n\nYour product "${product.name}" is approaching its best-before date.\n\nBest Before: ${product.best_before}\nDays Left: ${daysLeft}\n\nPlease consider updating the listing or removing it from sale.\n\nGoGreen`,
+    text: `Hi ${farmer.name},\n\nYour product "${product.name}" is approaching its best-before date.\n\nBest Before: ${product.best_before}\nDays Left: ${daysLeft}\n\nPlease consider updating the listing or removing it from sale.\n\nAgroThrive`,
   });
 }
 
@@ -122,21 +122,21 @@ async function sendReturnEmail({ type, order, buyer, farmer, reason, txHash, rej
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: farmer.email,
       subject: `↩️ Return Request – Order #${order.id} (${order.product_name})`,
-      text: `Hi ${farmer.name},\n\nBuyer ${buyer.name} has filed a return request for Order #${order.id}.\n\nReason: ${reason}\n\nPlease log in to approve or reject this request.\n\nGoGreen`,
+      text: `Hi ${farmer.name},\n\nBuyer ${buyer.name} has filed a return request for Order #${order.id}.\n\nReason: ${reason}\n\nPlease log in to approve or reject this request.\n\nAgroThrive`,
     });
   } else if (type === 'approved') {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: buyer.email,
       subject: `✅ Return Approved – Order #${order.id} (${order.product_name})`,
-      text: `Hi ${buyer.name},\n\nYour return request for Order #${order.id} has been approved.\n\nRefund of ${order.total_price} XLM has been sent.\nTX Hash: ${txHash}\n\nGoGreen`,
+      text: `Hi ${buyer.name},\n\nYour return request for Order #${order.id} has been approved.\n\nRefund of ${order.total_price} XLM has been sent.\nTX Hash: ${txHash}\n\nAgroThrive`,
     });
   } else if (type === 'rejected') {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: buyer.email,
       subject: `❌ Return Rejected – Order #${order.id} (${order.product_name})`,
-      text: `Hi ${buyer.name},\n\nYour return request for Order #${order.id} has been rejected.${rejectReason ? `\n\nReason: ${rejectReason}` : ''}\n\nGoGreen`,
+      text: `Hi ${buyer.name},\n\nYour return request for Order #${order.id} has been rejected.${rejectReason ? `\n\nReason: ${rejectReason}` : ''}\n\nAgroThrive`,
     });
   }
 }
@@ -147,7 +147,7 @@ async function sendProductExpiredEmail({ product, farmer }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: farmer.email,
     subject: `🚫 Product Deactivated – ${product.name}`,
-    text: `Hi ${farmer.name},\n\nYour product "${product.name}" has been automatically deactivated because its best-before date (${product.best_before}) has passed.\n\nIf you have fresh stock, please create a new listing.\n\nGoGreen`,
+    text: `Hi ${farmer.name},\n\nYour product "${product.name}" has been automatically deactivated because its best-before date (${product.best_before}) has passed.\n\nIf you have fresh stock, please create a new listing.\n\nAgroThrive`,
   });
 }
 
@@ -158,7 +158,7 @@ async function sendContractAlert({ to, alert }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to,
     subject: `[Contract Alert] ${typeLabel} – ${alert.contract_id}`,
-    text: `Admin Alert\n\nType: ${alert.alert_type}\nContract: ${alert.contract_id}\n\n${alert.message}\n\nTime: ${alert.created_at}\n\nLog in to the admin dashboard to acknowledge this alert.\n\nGoGreen`,
+    text: `Admin Alert\n\nType: ${alert.alert_type}\nContract: ${alert.contract_id}\n\n${alert.message}\n\nTime: ${alert.created_at}\n\nLog in to the admin dashboard to acknowledge this alert.\n\nAgroThrive`,
   });
 }
 
@@ -168,7 +168,7 @@ async function sendSubscriptionPaymentFailedEmail({ buyer, subscription }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: buyer.email,
     subject: `⚠️ Subscription Payment Failed – ${subscription.product_name}`,
-    text: `Hi ${buyer.name},\n\nWe were unable to process the payment for your subscription to "${subscription.product_name}" after multiple attempts.\n\nYour subscription has been paused. Please update your payment details or contact support.\n\nGoGreen`,
+    text: `Hi ${buyer.name},\n\nWe were unable to process the payment for your subscription to "${subscription.product_name}" after multiple attempts.\n\nYour subscription has been paused. Please update your payment details or contact support.\n\nAgroThrive`,
   });
 }
 
@@ -178,7 +178,7 @@ async function sendAuctionWinnerEmail({ winner, auction, txHash }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: winner.buyer_email,
     subject: `🏆 You won Auction #${auction.id}!`,
-    text: `Hi ${winner.buyer_name},\n\nCongratulations! You won the auction for ${auction.product_name || 'the product'}.\n\nWinning Bid: ${winner.amount} XLM\nTX Hash: ${txHash}\n\nGoGreen`,
+    text: `Hi ${winner.buyer_name},\n\nCongratulations! You won the auction for ${auction.product_name || 'the product'}.\n\nWinning Bid: ${winner.amount} XLM\nTX Hash: ${txHash}\n\nAgroThrive`,
   });
 }
 
@@ -188,7 +188,7 @@ async function sendAuctionSaleEmail({ farmer, winner, txHash }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: farmer.farmer_email,
     subject: `💰 Auction #${farmer.id} sold!`,
-    text: `Hi ${farmer.farmer_name},\n\nYour auction has ended with a winning bid of ${winner.amount} XLM.\n\nTX Hash: ${txHash}\n\nGoGreen`,
+    text: `Hi ${farmer.farmer_name},\n\nYour auction has ended with a winning bid of ${winner.amount} XLM.\n\nTX Hash: ${txHash}\n\nAgroThrive`,
   });
 }
 
@@ -198,7 +198,7 @@ async function sendAuctionNoSaleEmail({ bidder, auction }) {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: bidder.email,
     subject: `Auction #${auction.id} ended — reserve not met`,
-    text: `Hi ${bidder.name},\n\nAuction #${auction.id} has ended without a sale because the reserve price was not met.\n\nGoGreen`,
+    text: `Hi ${bidder.name},\n\nAuction #${auction.id} has ended without a sale because the reserve price was not met.\n\nAgroThrive`,
   });
 }
 
@@ -209,13 +209,13 @@ async function sendDisputeOpenedEmail({ buyer, order, farmerName, farmerEmail })
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: buyer.email,
       subject: `Dispute Filed – Order #${order.id || order.order_id}`,
-      text: `Hi ${buyer.name},\n\nYour dispute for Order #${order.id || order.order_id} has been filed and is under review.\n\nGoGreen`,
+      text: `Hi ${buyer.name},\n\nYour dispute for Order #${order.id || order.order_id} has been filed and is under review.\n\nAgroThrive`,
     }),
     transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: farmerEmail,
       subject: `Dispute Opened – Order #${order.id || order.order_id}`,
-      text: `Hi ${farmerName},\n\nA dispute has been filed against Order #${order.id || order.order_id} by the buyer.\n\nPlease log in to review.\n\nGoGreen`,
+      text: `Hi ${farmerName},\n\nA dispute has been filed against Order #${order.id || order.order_id} by the buyer.\n\nPlease log in to review.\n\nAgroThrive`,
     }),
   ]);
 }
@@ -223,7 +223,7 @@ async function sendDisputeOpenedEmail({ buyer, order, farmerName, farmerEmail })
 async function sendDisputeResolvedEmail({ dispute, order, product, buyer, farmerEmail, farmerName }) {
   if (!SMTP_CONFIGURED) return;
   const subject = `Dispute Resolved – Order #${order.id}`;
-  const body = `Dispute for Order #${order.id} (${product?.name || ''}) has been resolved.\n\nResolution: ${dispute.resolution}\n\nGoGreen`;
+  const body = `Dispute for Order #${order.id} (${product?.name || ''}) has been resolved.\n\nResolution: ${dispute.resolution}\n\nAgroThrive`;
   const emails = [
     transporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: buyer.email, subject, text: `Hi ${buyer.name},\n\n${body}` }),
   ];
@@ -240,7 +240,7 @@ async function sendBundleReceiptEmail({ buyer, bundle, items, totalPrice, discou
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: buyer.email,
     subject: `Bundle Receipt – ${bundle.name}`,
-    text: `Hi ${buyer.name},\n\nThank you for your bundle purchase!\n\nBundle: ${bundle.name}\nItems:\n${itemLines}\n\nDiscount: ${discount} XLM\nTotal Paid: ${totalPrice} XLM\nTX Hash: ${txHash}\n\nGoGreen`,
+    text: `Hi ${buyer.name},\n\nThank you for your bundle purchase!\n\nBundle: ${bundle.name}\nItems:\n${itemLines}\n\nDiscount: ${discount} XLM\nTotal Paid: ${totalPrice} XLM\nTX Hash: ${txHash}\n\nAgroThrive`,
   });
 }
 

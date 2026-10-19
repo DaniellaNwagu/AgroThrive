@@ -1,5 +1,5 @@
 {
-  "name": "gogreen-e2e",
+  "name": "agrothrive-e2e",
   "private": true,
   "scripts": {
     "e2e": "playwright test",

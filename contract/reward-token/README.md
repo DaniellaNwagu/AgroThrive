@@ -1,4 +1,4 @@
-# GoGreen Reward Token (FRT)
+# AgroThrive Reward Token (FRT)
 
 SEP-0041 compliant Soroban fungible token for marketplace rewards.
 

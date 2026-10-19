@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The GoGreen codebase consists of a Node.js/Express backend and a React/Vite frontend. Currently there is no unified linting or formatting enforcement, which leads to inconsistent code style and uncaught common errors. This feature adds ESLint and Prettier configuration to both packages, enforces consistent formatting at the repo root, and ensures all existing code passes the configured rules with zero warnings.
+The AgroThrive codebase consists of a Node.js/Express backend and a React/Vite frontend. Currently there is no unified linting or formatting enforcement, which leads to inconsistent code style and uncaught common errors. This feature adds ESLint and Prettier configuration to both packages, enforces consistent formatting at the repo root, and ensures all existing code passes the configured rules with zero warnings.
 
 ## Glossary
 

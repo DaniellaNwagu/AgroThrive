@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design covers adding a Docker Compose development environment to GoGreen. The goal is a single `docker-compose up` command that starts both the Node.js/Express backend and the React/Vite frontend with hot reload, persists the SQLite database across restarts, and is documented in the README.
+This design covers adding a Docker Compose development environment to AgroThrive. The goal is a single `docker-compose up` command that starts both the Node.js/Express backend and the React/Vite frontend with hot reload, persists the SQLite database across restarts, and is documented in the README.
 
 No application code changes are required — only new infrastructure files (`backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`) and a README update.
 

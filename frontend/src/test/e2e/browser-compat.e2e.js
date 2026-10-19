@@ -45,7 +45,7 @@ async function goto(page, path) {
 test.describe('Page load', () => {
   test('login page renders and is interactive', async ({ page }) => {
     await goto(page, '/login');
-    await expect(page).toHaveTitle(/GoGreen|Marketplace/i);
+    await expect(page).toHaveTitle(/AgroThrive|Marketplace/i);
     // Email and password inputs must be present and focusable
     const email = page.getByRole('textbox', { name: /email/i });
     const password = page.locator('input[type="password"]');

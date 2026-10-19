@@ -80,8 +80,8 @@ export function LoginPage() {
   return (
     <div style={s.wrap}>
       <Helmet>
-        <title>Login – GoGreen</title>
-        <meta name="description" content="Sign in to your GoGreen account." />
+        <title>Login – AgroThrive</title>
+        <meta name="description" content="Sign in to your AgroThrive account." />
       </Helmet>
       <div style={s.card}>
         <div style={s.title}>{t('auth.welcomeBack')}</div>
@@ -147,8 +147,8 @@ export function RegisterPage() {
   return (
     <div style={s.wrap}>
       <Helmet>
-        <title>Register – GoGreen</title>
-        <meta name="description" content="Create a free account on GoGreen to buy fresh produce or sell your farm products." />
+        <title>Register – AgroThrive</title>
+        <meta name="description" content="Create a free account on AgroThrive to buy fresh produce or sell your farm products." />
       </Helmet>
       <div style={s.card}>
         <div style={s.title}>{t('auth.createAccount')}</div>

@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: gogreen
+      POSTGRES_DB: agrothrive
       POSTGRES_USER: fmuser
       POSTGRES_PASSWORD: fmpassword
     ports:
@@ -13,7 +13,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U fmuser -d gogreen']
+      test: ['CMD-SHELL', 'pg_isready -U fmuser -d agrothrive']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://fmuser:fmpassword@postgres:5432/gogreen
+      DATABASE_URL: postgresql://fmuser:fmpassword@postgres:5432/agrothrive
       JWT_SECRET: ${JWT_SECRET}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
       STELLAR_NETWORK: ${STELLAR_NETWORK:-testnet}

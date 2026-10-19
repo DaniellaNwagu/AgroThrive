@@ -1,4 +1,4 @@
-//! Unit tests for the GoGreen escrow contract.
+//! Unit tests for the AgroThrive escrow contract.
 //! Covers acceptance criteria from issues
 //! #468, #469, #470, #471, #675, #676, #687, #688, #852, #853, #854, #855.
 

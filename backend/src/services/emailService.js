@@ -15,8 +15,8 @@ async function sendVerificationEmail({ to, name, token }) {
     {
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
-      subject: 'Verify your GoGreen account',
-      text: `Hi ${name},\n\nPlease verify your email by visiting:\n${verifyUrl}\n\nGoGreen`,
+      subject: 'Verify your AgroThrive account',
+      text: `Hi ${name},\n\nPlease verify your email by visiting:\n${verifyUrl}\n\nAgroThrive`,
     },
     'email_verification'
   );
@@ -32,8 +32,8 @@ async function sendPasswordResetEmail({ to, name, token }) {
     {
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
-      subject: 'Reset your GoGreen password',
-      text: `Hi ${name},\n\nReset your password by visiting:\n${resetUrl}\n\nGoGreen`,
+      subject: 'Reset your AgroThrive password',
+      text: `Hi ${name},\n\nReset your password by visiting:\n${resetUrl}\n\nAgroThrive`,
     },
     'password_reset'
   );

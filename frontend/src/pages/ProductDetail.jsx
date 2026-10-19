@@ -524,7 +524,7 @@ export default function ProductDetail() {
   const currentStock = liveStock !== null ? liveStock : product.quantity;
 
   const shareUrl = shareMeta?.url || `${window.location.origin}/product/${id}`;
-  const shareTitle = shareMeta?.title || `${product.name} on GoGreen`;
+  const shareTitle = shareMeta?.title || `${product.name} on AgroThrive`;
   const shareDescription = shareMeta?.description || product.description || 'Fresh produce from local farmers';
   const shareImage = shareMeta?.image || product.image_url || '';
 

@@ -129,7 +129,7 @@ async function sendPayment({ senderSecret, receiverPublicKey, amount, memo }) {
         amount: farmerAmount.toFixed(7),
       })
     )
-    .addMemo(StellarSdk.Memo.text(memo || 'GoGreen'))
+    .addMemo(StellarSdk.Memo.text(memo || 'AgroThrive'))
     .setTimeout(30);
 
   if (feeAmount > 0 && platformWallet) {
@@ -804,7 +804,7 @@ async function checkSorobanRPC() {
   }
 }
 
-// Resolve a federation address (e.g. farmer*gogreen.io) to a Stellar public key.
+// Resolve a federation address (e.g. farmer*agrothrive.io) to a Stellar public key.
 // Pass the db instance for local domain lookups.
 async function resolveFederationAddress(address, db) {
   if (!address || !address.includes('*')) return address; // already a raw key
@@ -1024,7 +1024,7 @@ async function pathPayment({
         destAmount: parseFloat(destAmount).toFixed(7),
       })
     )
-    .addMemo(StellarSdk.Memo.text(memo || 'GoGreen'))
+    .addMemo(StellarSdk.Memo.text(memo || 'AgroThrive'))
     .setTimeout(30)
     .build();
 

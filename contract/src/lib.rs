@@ -1,4 +1,4 @@
-//! GoGreen - Soroban Escrow Contract
+//! AgroThrive - Soroban Escrow Contract
 //!
 //! Issues addressed:
 //!   #468 - Extend ledger entry TTL so escrow data cannot expire and lock funds.

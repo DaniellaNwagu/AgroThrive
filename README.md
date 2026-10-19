@@ -1,6 +1,6 @@
-# 🌿 GoGreen
+# 🌿 AgroThrive
 
-[![CI](https://github.com/ITSYABOINEUTRAL/GoGreen/workflows/CI/badge.svg)](https://github.com/ITSYABOINEUTRAL/GoGreen/actions)
+[![CI](https://github.com/DaniellaNwagu/AgroThrive/workflows/CI/badge.svg)](https://github.com/DaniellaNwagu/AgroThrive/actions)
 
 A minimal MVP marketplace where farmers list products and buyers pay using the **Stellar Network (XLM)**.
 
@@ -14,7 +14,7 @@ A minimal MVP marketplace where farmers list products and buyers pay using the *
 ## Project Structure
 
 ```
-GoGreen/
+AgroThrive/
 ├── backend/
 │   ├── src/
 │   │   ├── index.js          # Express app entry
@@ -187,7 +187,7 @@ No extra setup needed. SQLite is used automatically when `DATABASE_URL` is not s
 
 1. Add `DATABASE_URL` to your `.env`:
    ```
-   DATABASE_URL=postgresql://user:password@localhost:5432/gogreen
+   DATABASE_URL=postgresql://user:password@localhost:5432/agrothrive
    ```
 2. The schema is created automatically on first start.
 

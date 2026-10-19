@@ -203,9 +203,9 @@ describe('sendPayment()', () => {
     expect(StellarSdk.Memo.text).toHaveBeenCalledWith('order-42');
   });
 
-  it('uses default memo "GoGreen" when none provided', async () => {
+  it('uses default memo "AgroThrive" when none provided', async () => {
     await stellar.sendPayment({ ...params, memo: undefined });
-    expect(StellarSdk.Memo.text).toHaveBeenCalledWith('GoGreen');
+    expect(StellarSdk.Memo.text).toHaveBeenCalledWith('AgroThrive');
   });
 
   it('loads the sender account before building the transaction', async () => {

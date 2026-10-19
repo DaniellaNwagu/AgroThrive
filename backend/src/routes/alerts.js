@@ -116,7 +116,7 @@ async function notifyNearbyFarmers(alert) {
       await mailer.sendMail({
         to: farmer.email,
         subject: `🚨 New Crop Alert: ${alertTypeLabel}`,
-        text: `Hello ${farmer.name},\n\nA nearby farmer has reported a ${alert.alert_type} alert:\n\n${alert.description}\n\nLocation: ${alert.location || 'Not specified'}\nSeverity: ${alert.severity}\n\nStay informed and take necessary precautions.\n\nBest regards,\nGoGreen`,
+        text: `Hello ${farmer.name},\n\nA nearby farmer has reported a ${alert.alert_type} alert:\n\n${alert.description}\n\nLocation: ${alert.location || 'Not specified'}\nSeverity: ${alert.severity}\n\nStay informed and take necessary precautions.\n\nBest regards,\nAgroThrive`,
       });
     } catch (err) {
       logger.error(`[Alerts] Failed to email ${farmer.email}`, { error: err.message });

@@ -8,7 +8,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const bcrypt = require('bcryptjs');
 
 const name = process.env.ADMIN_NAME || 'Admin';
-const email = process.env.ADMIN_EMAIL || 'admin@gogreen.com';
+const email = process.env.ADMIN_EMAIL || 'admin@agrothrive.com';
 const password = process.env.ADMIN_PASSWORD || 'Admin1234!';
 
 if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {

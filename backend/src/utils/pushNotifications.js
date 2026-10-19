@@ -5,7 +5,7 @@ const db = require('../db/schema');
 const _vapid = {
   publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || '',
   privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || '',
-  subject: process.env.WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@gogreen.local',
+  subject: process.env.WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@agrothrive.local',
 };
 
 // Kept for backward-compat exports — reflects the current public key

@@ -20,7 +20,7 @@ const requireAdmin = require('../middleware/requireAdmin');
 const cache = require('../cache');
 const { err } = require('../middleware/error');
 
-const APP_NAME = 'GoGreen';
+const APP_NAME = 'AgroThrive';
 const APP_VERSION = '1.0.0';
 const PEER_CACHE_TTL = 5 * 60; // 5 minutes in seconds
 

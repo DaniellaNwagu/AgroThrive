@@ -134,7 +134,7 @@ export default function Navbar() {
         end
         style={({ isActive }) => (isActive ? { ...s.brand, textDecoration: 'underline' } : s.brand)}
       >
-        🌿 GoGreen
+        🌿 AgroThrive
       </NavLink>
       {network && network !== 'mainnet' && (
         <span style={{
