@@ -21,28 +21,33 @@
 
 import { test, expect } from '@playwright/test';
 import {
+  DATA_THEME_ATTRIBUTE,
   THEME_STORAGE_KEY,
-  readDataTheme,
-  readStoredTheme,
+  USER_STORAGE_KEY,
 } from './themeHelpers.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Inject a fake authenticated user so the navbar shows auth controls. */
 async function injectUser(page, role = 'buyer') {
-  await page.addInitScript((r) => {
-    window.__themeHelpers.writeUser(localStorage, r);
-  }, role);
+  await page.addInitScript(({ key, userRole }) => {
+    localStorage.setItem(key, JSON.stringify({
+      id: 'test-user-id',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: userRole,
+    }));
+  }, { key: USER_STORAGE_KEY, userRole: role });
 }
 
 /** Read the current data-theme attribute from the root element. */
 function getDataTheme(page) {
-  return page.evaluate(() => readDataTheme(document));
+  return page.evaluate((attribute) => document.documentElement.getAttribute(attribute), DATA_THEME_ATTRIBUTE);
 }
 
 /** Read localStorage['theme'] (null when using system preference). */
 function getStoredTheme(page) {
-  return page.evaluate(() => readStoredTheme(localStorage));
+  return page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY);
 }
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
