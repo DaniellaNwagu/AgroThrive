@@ -13,6 +13,7 @@ jobs:
     env:
       NODE_ENV: development
       JWT_SECRET: ci-e2e-secret
+      ENCRYPTION_SECRET: ci-e2e-encryption-secret-32-bytes-long
       STELLAR_NETWORK: testnet
       SMTP_HOST: ""
       PORT: 4000
