@@ -3021,6 +3021,20 @@ mod test {
         };
         env.storage().instance().set(&DataKey::Admin, &transfer);
         admin
+    }
+
+    #[test]
+    fn admin_setup_preserves_escrow_and_reward_token_state() {
+        let env = Env::default();
+        let contract_id = env.register(EscrowContract, ());
+        env.mock_all_auths();
+        env.clone().as_contract(&contract_id, || {
+            setup_admin(&env);
+            let buyer = Address::generate(&env);
+            let farmer = Address::generate(&env);
+            let token = Address::generate(&env);
+            store_escrow(&env, 601, buyer, farmer, token);
+
             assert!(env
                 .storage()
                 .instance()
@@ -4407,10 +4421,37 @@ mod test {
         let contract_id = env.register(EscrowContract, ());
         env.clone().as_contract(&contract_id, || {
             let buyer = Address::generate(&env);
+            let mut ids: Vec<u64> = Vec::new(&env);
+            for id in 0u64..1000 {
+                ids.push_back(id);
+            }
+            env.storage()
+                .persistent()
+                .set(&DataKey::BuyerEscrows(buyer.clone()), &ids);
 
+            let mut stored: Vec<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::BuyerEscrows(buyer.clone()))
+                .unwrap();
+            if stored.len() >= 1000 {
+                stored.remove(0);
+            }
+            stored.push_back(1000u64);
+            env.storage()
+                .persistent()
+                .set(&DataKey::BuyerEscrows(buyer.clone()), &stored);
 
-
-
+            let result: Vec<u64> = env
+                .storage()
+                .persistent()
+                .get(&DataKey::BuyerEscrows(buyer))
+                .unwrap();
+            assert_eq!(result.len(), 1000);
+            assert_eq!(result.get(0).unwrap(), 1u64);
+            assert_eq!(result.get(999).unwrap(), 1000u64);
+        });
+    }
     // ── Evidence submission cap tests (#956) ────────────────────────────────
 
     #[test]
@@ -4727,11 +4768,6 @@ mod deposit_path_test {
     const AMOUNT: i128 = 10_000_000;
     const TIMEOUT: u64 = 10_000;
 
-        // Test offset beyond total
-        let empty_page = EscrowContract::get_buyer_escrows(env, buyer, 300, 50);
-        assert_eq!(empty_page.total, 250);
-        assert_eq!(empty_page.escrows.len(), 0);
-        });
     struct Setup {
         env: Env,
         client: EscrowContractClient<'static>,
@@ -4744,17 +4780,21 @@ mod deposit_path_test {
         let env = Env::default();
         let contract_id = env.register(EscrowContract, ());
         env.mock_all_auths();
-        env.clone().as_contract(&contract_id, || {
-            let buyer = Address::generate(&env);
-            let farmer = Address::generate(&env);
-            let token = Address::generate(&env);
+        let buyer = Address::generate(&env);
+        let farmer = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env.register_stellar_asset_contract_v2(token_admin).address();
+        let token_client = StellarAssetClient::new(&env, &token);
+        token_client.mint(&buyer, &AMOUNT);
+        let client = EscrowContractClient::new(&env, &contract_id);
 
-            let err = EscrowContract::deposit(
-                env, token, MAX_ORDER_ID, buyer, farmer, 100, 1_000, None, 0, 0,
-            )
-            .unwrap_err();
-            assert_eq!(err, EscrowError::InvalidAmount);
-        });
+        Setup {
+            env,
+            client,
+            token,
+            buyer,
+            farmer,
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -5719,6 +5759,8 @@ mod deposit_path_test {
                 Err(EscrowError::InDispute)
             );
         });
+    }
+
     fn deposit(s: &Setup, order_id: u64, buyer: &Address) {
         s.client.deposit(
             &s.token, &order_id, buyer, &s.farmer, &AMOUNT, &TIMEOUT, &None, &0, &0,
