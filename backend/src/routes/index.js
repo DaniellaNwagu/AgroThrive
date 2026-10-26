@@ -410,7 +410,7 @@ registerRoute('/', '/wallet', require('./walletBudget'));
 registerRoute('/', '/market', require('./market'));
 registerRoute('/', '/subscriptions', require('./subscriptions').router);
 registerRoute('/', '/bundles', require('./bundles'));
-registerRoute('/', '/farmers/bundles', require('./bundleDiscounts'));
+registerRoute('/', '/farmers', require('./bundleDiscounts'));
 registerRoute('/', '/announcements', require('./announcements'));
 registerRoute('/', '/auctions', require('./auctions'));
 

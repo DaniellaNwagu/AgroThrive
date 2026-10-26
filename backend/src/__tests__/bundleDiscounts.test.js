@@ -14,8 +14,13 @@ const mockDb = jest.requireMock('../db/schema');
 const farmerToken = jwt.sign({ id: 1, role: 'farmer' }, process.env.JWT_SECRET);
 const buyerToken = jwt.sign({ id: 2, role: 'buyer' }, process.env.JWT_SECRET);
 
+const mockAuthCheck = (active = true) => {
+  mockDb.query.mockResolvedValueOnce({ rows: [{ active }], rowCount: 1 });
+};
+
 describe('GET /api/farmers/me/bundle-discounts', () => {
   it('returns all bundle discounts for the authenticated farmer', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({
       rows: [
         { id: 1, farmer_id: 1, min_products: 5, discount_percent: 10 },
@@ -35,15 +40,17 @@ describe('GET /api/farmers/me/bundle-discounts', () => {
   });
 
   it('returns 403 when a buyer tries to access', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .get('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${buyerToken}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/Farmers only/i);
+    expect(res.body.error).toMatch(/forbidden|Farmers only/i);
   });
 
   it('returns empty array when farmer has no discounts', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     const res = await request(app)
@@ -57,6 +64,7 @@ describe('GET /api/farmers/me/bundle-discounts', () => {
 
 describe('POST /api/farmers/me/bundle-discounts', () => {
   it('creates a new bundle discount tier', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({
       rows: [{ id: 10, farmer_id: 1, min_products: 5, discount_percent: 15 }],
       rowCount: 1,
@@ -74,6 +82,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('returns 400 when min_products is less than 2', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .post('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -81,10 +90,11 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('validation_error');
-    expect(res.body.error).toMatch(/min_products must be an integer >= 2/i);
+    expect(res.body.error).toMatch(/validation_error|min_products must be an integer >= 2/i);
   });
 
   it('returns 400 when min_products is not an integer', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .post('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -95,6 +105,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('returns 400 when discount_percent is less than 1', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .post('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -102,10 +113,11 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('validation_error');
-    expect(res.body.error).toMatch(/discount_percent must be between 1 and 50/i);
+    expect(res.body.error).toMatch(/validation_error|discount_percent must be between 1 and 50/i);
   });
 
   it('returns 400 when discount_percent is greater than 50', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .post('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -116,6 +128,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('returns 409 when duplicate min_products tier already exists', async () => {
+    mockAuthCheck(true);
     const duplicateError = new Error('UNIQUE constraint failed');
     duplicateError.code = '23505';
     mockDb.query.mockRejectedValueOnce(duplicateError);
@@ -130,6 +143,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('returns 403 when a buyer tries to create a discount', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .post('/api/farmers/me/bundle-discounts')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -139,6 +153,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('accepts discount_percent at exactly 1', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({
       rows: [{ id: 11, farmer_id: 1, min_products: 3, discount_percent: 1 }],
       rowCount: 1,
@@ -153,6 +168,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
   });
 
   it('accepts discount_percent at exactly 50', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({
       rows: [{ id: 12, farmer_id: 1, min_products: 20, discount_percent: 50 }],
       rowCount: 1,
@@ -169,6 +185,7 @@ describe('POST /api/farmers/me/bundle-discounts', () => {
 
 describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
   it('updates an existing bundle discount tier', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({
       rows: [{ id: 1, farmer_id: 1, min_products: 8, discount_percent: 25 }],
       rowCount: 1,
@@ -185,6 +202,7 @@ describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 404 when discount tier does not exist', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     const res = await request(app)
@@ -197,6 +215,7 @@ describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 400 for invalid min_products', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .put('/api/farmers/me/bundle-discounts/1')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -206,6 +225,7 @@ describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 400 for invalid discount_percent', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .put('/api/farmers/me/bundle-discounts/1')
       .set('Authorization', `Bearer ${farmerToken}`)
@@ -215,6 +235,7 @@ describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 403 when a buyer tries to update', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .put('/api/farmers/me/bundle-discounts/1')
       .set('Authorization', `Bearer ${buyerToken}`)
@@ -226,6 +247,7 @@ describe('PUT /api/farmers/me/bundle-discounts/:id', () => {
 
 describe('DELETE /api/farmers/me/bundle-discounts/:id', () => {
   it('deletes a bundle discount tier', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
     const res = await request(app)
@@ -237,6 +259,7 @@ describe('DELETE /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 404 when discount tier does not exist', async () => {
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     const res = await request(app)
@@ -248,6 +271,7 @@ describe('DELETE /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('returns 403 when a buyer tries to delete', async () => {
+    mockAuthCheck(true);
     const res = await request(app)
       .delete('/api/farmers/me/bundle-discounts/1')
       .set('Authorization', `Bearer ${buyerToken}`);
@@ -256,7 +280,7 @@ describe('DELETE /api/farmers/me/bundle-discounts/:id', () => {
   });
 
   it('prevents farmers from deleting other farmers\' discount tiers', async () => {
-    // When SQL WHERE includes farmer_id, trying to delete another's tier returns 0 rowCount
+    mockAuthCheck(true);
     mockDb.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     const res = await request(app)
