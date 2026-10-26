@@ -6,16 +6,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CreatorEarningsPanel from '../components/dashboard/CreatorEarningsPanel';
 
-describe('#1206 CreatorEarningsPanel claim flow', () => {
-  it('disables the claim action when the balance is zero', () => {
-    render(
-      <CreatorEarningsPanel earnings={{ balance: 0 }} claiming={false} claimMsg={null} onClaim={vi.fn()} />
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { vi, describe, it, expect } from 'vitest';
-
-import CreatorEarningsPanel from '../../components/dashboard/CreatorEarningsPanel';
-
 // ── Balance display ───────────────────────────────────────────────────────────
 
 describe('CreatorEarningsPanel — balance display', () => {
@@ -115,6 +105,8 @@ describe('CreatorEarningsPanel — claim button', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Claim failed: contract call rejected');
     // Balance still positive, so the claim action remains available for retry.
     expect(screen.getByRole('button', { name: /claim earnings/i })).not.toBeDisabled();
+  });
+
   it('is disabled when balance is 0', () => {
     render(
       <CreatorEarningsPanel
