@@ -294,7 +294,6 @@ export default function MapView({ products = [], lat, lng, farmerName, onFarmerC
       return;
     }
     requestBrowserLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasUserLocation, userLat, userLng, hasSingleLocation, lat, lng]);
 
   if (groups.length === 0 && !hasUserLocation) {

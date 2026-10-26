@@ -28,7 +28,7 @@ function buildComparisonCsv(products, t) {
     [t('compare.category'), ...products.map(p => p?.category ?? '—')],
     [t('compare.allergens'), ...products.map(p => {
       let allergens = [];
-      try { allergens = p?.allergens ? JSON.parse(p.allergens) : []; } catch {}
+      try { allergens = p?.allergens ? JSON.parse(p.allergens) : []; } catch { allergens = []; }
       return allergens.length === 0 ? t('compare.none') : allergens.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ');
     })],
     [t('compare.grade'), ...products.map(p => p?.grade ?? '—')],
@@ -172,7 +172,7 @@ export default function Compare() {
                 <td style={{ ...s.td, ...s.rowLabel }}>{t('compare.allergens')}</td>
                 {products.map(product => {
                   let allergens = [];
-                  try { allergens = product?.allergens ? JSON.parse(product.allergens) : []; } catch {}
+                  try { allergens = product?.allergens ? JSON.parse(product.allergens) : []; } catch { allergens = []; }
                   return (
                     <td key={`${product.id}-allergens`} style={s.td}>
                       {allergens.length === 0 ? t('compare.none') : allergens.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')}

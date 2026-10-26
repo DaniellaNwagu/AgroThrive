@@ -109,8 +109,9 @@ export default function FlashSaleManager({ products, onChanged }) {
           <input style={s.input} type="number" min="0" step="any" required value={form.flash_sale_price} onChange={e => setForm(f => ({ ...f, flash_sale_price: e.target.value }))} />
         </div>
         <div>
-          <label style={s.label}>Ends At</label>
+          <label style={s.label} htmlFor="flash-sale-ends-at">Ends At</label>
           <input
+            id="flash-sale-ends-at"
             style={{ ...s.input, ...(endsAtError ? { borderColor: '#c0392b' } : {}) }}
             type="datetime-local"
             required

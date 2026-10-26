@@ -42,7 +42,7 @@ export default function TwoFactorAuth() {
     try {
       const data = await api.get2FAStatus();
       setEnabled(data.enabled);
-    } catch (err) {
+    } catch {
       setMsg({ type: 'err', text: 'Failed to load 2FA status' });
     } finally {
       setLoading(false);
@@ -176,7 +176,7 @@ export default function TwoFactorAuth() {
             </div>
           )}
           <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-            <strong>Can't scan?</strong> Enter this code manually: <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{secret}</code>
+            <strong>Can&apos;t scan?</strong> Enter this code manually: <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{secret}</code>
           </div>
           <div style={{ ...s.warn, background: '#fff3cd', borderColor: '#ffc107', color: '#856404' }}>
             💾 Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator app.

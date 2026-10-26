@@ -7,11 +7,13 @@ const en = require('../src/i18n/en.json');
 const sw = require('../src/i18n/sw.json');
 const { getMissingKeys } = require('./i18n-sync-utils');
 const missing = getMissingKeys(en, sw);
+const print = (message = '') => process.stdout.write(`${message}\n`);
+const printError = (message = '') => process.stderr.write(`${message}\n`);
 
 if (missing.length > 0) {
-  console.error('❌ sw.json is missing the following keys from en.json:');
-  missing.forEach(k => console.error(`  - ${k}`));
+  printError('❌ sw.json is missing the following keys from en.json:');
+  missing.forEach(k => printError(`  - ${k}`));
   process.exit(1);
 }
 
-console.log('✅ sw.json is in sync with en.json');
+print('✅ sw.json is in sync with en.json');

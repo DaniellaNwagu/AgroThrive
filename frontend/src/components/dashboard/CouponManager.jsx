@@ -217,7 +217,7 @@ export default function CouponManager() {
               <th style={{ textAlign: 'left', padding: '6px 8px', color: '#555' }}>Discount</th>
               <th style={{ textAlign: 'left', padding: '6px 8px', color: '#555' }}>Uses</th>
               <th style={{ textAlign: 'left', padding: '6px 8px', color: '#555' }}>Expires</th>
-              <th style={{ padding: '6px 8px' }}></th>
+              <th scope="col" style={{ padding: '6px 8px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>

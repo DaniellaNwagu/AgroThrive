@@ -175,58 +175,11 @@ const s = {
   address: { fontSize: 12, color: '#888', marginTop: 4 },
 };
 
-const EMPTY_FORM = {
-  name: '',
-  description: '',
-  price: '',
-  quantity: '',
-  unit: 'kg',
-  category: 'other',
-  min_order_quantity: '',
-  batch_id: '',
-  pricing_type: 'unit',
-  min_weight: '',
-  max_weight: '',
-  pricing_model: 'fixed',
-  min_price: '',
-  is_preorder: false,
-  preorder_delivery_date: '',
-  allergens: [],
-  allowed_regions: [],
-  nutrition: {
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    fiber: '',
-    vitamins: {},
-  },
-};
-
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 5;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 const MAX_IMAGES = 6;
 
-const STATUS_COLOR = {
-  pending: '#e67e22',
-  paid: '#2d6a4f',
-  processing: '#1a6b8a',
-  shipped: '#006d77',
-  delivered: '#2d6a4f',
-  cancelled: '#c0392b',
-  refunded: '#888',
-};
-const STATUS_ICON = {
-  pending: '⏳',
-  paid: '✅',
-  processing: '⚙️',
-  shipped: '📦',
-  delivered: '🎉',
-  cancelled: '❌',
-  refunded: '↩️',
-};
-const FARMER_STATUSES = ['processing', 'shipped', 'delivered', 'cancelled'];
 const LOW_STOCK_THRESHOLD = Number(import.meta.env.VITE_LOW_STOCK_THRESHOLD || 5);
 
 // Price tiers are an editable list (add/remove), so each row needs a stable
@@ -242,7 +195,6 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const { rate } = useXlmRate();
   const [products, setProducts] = useState([]);
-  const [inlineEditing, setInlineEditing] = useState({}); // { [productId_field]: true }
   const [restockVals, setRestockVals] = useState({});
   const [harvestBatches, setHarvestBatches] = useState([]);
   const productsRef = useRef([]);
@@ -252,8 +204,6 @@ export default function Dashboard() {
   const [forecastByProduct, setForecastByProduct] = useState({});
   const [waitlistAnalytics, setWaitlistAnalytics] = useState([]);
   const [videoUploadingByProduct, setVideoUploadingByProduct] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Creator earnings
   const [earnings, setEarnings] = useState(null);
@@ -261,14 +211,6 @@ export default function Dashboard() {
   const [claimMsg, setClaimMsg] = useState(null);
 
   // bundle state
-  const [bundles, setBundles] = useState([]);
-  const [bundleForm, setBundleForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    items: [{ product_id: '', quantity: 1 }],
-  });
-  const [bundleMsg, setBundleMsg] = useState(null);
 
   // bundle discount state
   const [bundleDiscounts, setBundleDiscounts] = useState([]);
@@ -292,7 +234,6 @@ export default function Dashboard() {
   const avatarInputRef = useRef(null);
 
   // CSV upload state
-  const [csvFile, setCsvFile] = useState(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvResult, setCsvResult] = useState(null);
   const csvInputRef = useRef(null);
@@ -307,7 +248,6 @@ export default function Dashboard() {
 
   // QR code modal state
   const [qrProductId, setQrProductId] = useState(null);
-  const [qrProductName, setQrProductName] = useState('');
 
   // Price tiers state
   const [tiersProductId, setTiersProductId] = useState(null);
@@ -368,7 +308,6 @@ export default function Dashboard() {
   const [calendarWeeks, setCalendarWeeks] = useState([]);
   const [calendarSaving, setCalendarSaving] = useState(false);
   // Cooperative / multisig state
-  const [cooperatives, setCooperatives] = useState([]);
   const [pendingTxs, setPendingTxs] = useState([]);
   const [signingTxId, setSigningTxId] = useState(null);
 
@@ -411,15 +350,12 @@ export default function Dashboard() {
     }
   }
 
-  async function load() {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async () => {
     try {
       const [
         productsRes,
         salesRes,
         profileRes,
-        bundlesRes,
         coopsRes,
         batchesRes,
         forecastRes,
@@ -427,7 +363,6 @@ export default function Dashboard() {
         api.getMyProducts().catch(() => ({ data: [] })),
         api.getSales().catch(() => ({ data: [] })),
         user?.id ? api.getFarmer(user.id).catch(() => ({})) : Promise.resolve({}),
-        api.getBundles().catch(() => ({ data: [] })),
         api.getCooperatives().catch(() => ({ data: [] })),
         api.getHarvestBatches().catch(() => ({ data: [] })),
         api.getForecast().catch(() => ({ data: [] })),
@@ -435,10 +370,8 @@ export default function Dashboard() {
 
       setProducts(productsRes.data ?? productsRes);
       setSales(salesRes.data ?? salesRes);
-      setBundles((bundlesRes.data ?? []).filter((b) => b.farmer_id === user?.id));
       setHarvestBatches(batchesRes?.data ?? []);
       const coops = coopsRes.data ?? [];
-      setCooperatives(coopsRes.data ?? []);
 
       const forecastMap = {};
       (forecastRes.data ?? []).forEach((item) => {
@@ -478,11 +411,9 @@ export default function Dashboard() {
         if (d.avatar_url) setAvatarPreview(d.avatar_url);
       }
     } catch (err) {
-      setError(err?.message || 'Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+      showToast(getErrorMessage(err) || 'Failed to load dashboard data', 'error');
     }
-  }
+  }, [user?.id]);
 
   useEffect(() => {
     productsRef.current = products;
@@ -503,7 +434,7 @@ export default function Dashboard() {
     if (typeof api.getCreatorEarnings === 'function') {
       api.getCreatorEarnings().then(res => setEarnings(res.data ?? res)).catch(() => {});
     }
-  }, [user?.id]);
+  }, [load, user?.id]);
 
   async function handleClaimEarnings() {
     setClaiming(true);
@@ -696,9 +627,7 @@ export default function Dashboard() {
     }
   }
 
-  async function handleRejectReturn(orderId) {
-    const reason = window.prompt('Reason for rejection (optional):');
-    if (reason === null) return;
+  async function handleRejectReturn(orderId, reason = '') {
     try {
       await api.rejectReturn(orderId, reason);
       setSalesMsg((prev) => ({ ...prev, [orderId]: { type: 'ok', text: 'Return rejected' } }));
@@ -1748,10 +1677,9 @@ export default function Dashboard() {
             <div style={{ fontSize: 18, fontWeight: 700, color: '#2d6a4f', marginBottom: 4 }}>
               {t('dashboard.productQr')}
             </div>
-            <div style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>{qrProductName}</div>
             <img
               src={`/api/products/${qrProductId}/qr`}
-              alt={`QR code for ${qrProductName}`}
+              alt={`QR code for product ${qrProductId}`}
               style={{
                 width: 220,
                 height: 220,

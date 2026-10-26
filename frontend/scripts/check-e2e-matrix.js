@@ -69,6 +69,8 @@ for (const spec of EXPECTED_SPECS) {
 // ── browser-tests.yml: matrix projects ──────────────────────────────────────
 const workflowSource = readFileSync(WORKFLOW_PATH, 'utf8');
 const workflowProjectNames = [...workflowSource.matchAll(/project:\s*([A-Za-z0-9-]+)/g)].map((m) => m[1]);
+const print = (message = '') => process.stdout.write(`${message}\n`);
+const printError = (message = '') => process.stderr.write(`${message}\n`);
 
 for (const project of EXPECTED_PROJECTS) {
   if (!workflowProjectNames.includes(project)) {
@@ -77,9 +79,9 @@ for (const project of EXPECTED_PROJECTS) {
 }
 
 if (errors.length > 0) {
-  console.error('[check-e2e-matrix] Browser matrix drift detected:\n');
-  for (const error of errors) console.error(`  - ${error}`);
+  printError('[check-e2e-matrix] Browser matrix drift detected:\n');
+  for (const error of errors) printError(`  - ${error}`);
   process.exit(1);
 }
 
-console.log('[check-e2e-matrix] theme/browser-compat spec matrix matches playwright.config.js and browser-tests.yml.');
+print('[check-e2e-matrix] theme/browser-compat spec matrix matches playwright.config.js and browser-tests.yml.');

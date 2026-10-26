@@ -15,7 +15,7 @@ export default function PendingMultisigPanel({ pendingTxs = [], signingTxId = nu
 
   const s = {
     card: {
-      background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 8px #0001',
+      borderRadius: 12, padding: 24, boxShadow: '0 1px 8px #0001',
       border: '1px solid #f9a825', background: '#fffde7', marginTop: 24,
     },
     btn: {

@@ -28,13 +28,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // trigger them without needing a working canvas.
 // ---------------------------------------------------------------------------
 
-let capturedOnConfirm = null;
-let capturedOnCancel = null;
-
 vi.mock('../components/ImageCropModal', () => ({
   default: ({ src, onConfirm, onCancel }) => {
-    capturedOnConfirm = onConfirm;
-    capturedOnCancel = onCancel;
     return (
       <div role="dialog" aria-label="Crop Image" data-testid="mock-crop-modal">
         <span data-testid="modal-src">{src}</span>
@@ -74,8 +69,6 @@ const createObjectURL = vi.fn(() => `blob:mock-url-${++urlCounter}`);
 
 beforeEach(() => {
   urlCounter = 0;
-  capturedOnConfirm = null;
-  capturedOnCancel = null;
   vi.clearAllMocks();
   Object.defineProperty(globalThis, 'URL', {
     value: { createObjectURL, revokeObjectURL },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -48,11 +48,8 @@ describe('#419 Marketplace empty state', () => {
         </MemoryRouter>
       </HelmetProvider>
     );
-    await waitFor(() => {
-      expect(screen.getByRole('status')).toBeInTheDocument();
-    });
-    // The Clear filters button should be inside the status region
-    const statusEl = screen.getByRole('status');
+    const emptyState = await screen.findByText('No products found.');
+    const statusEl = emptyState.closest('[role="status"]');
     expect(statusEl.querySelector('button')).not.toBeNull();
   });
 });

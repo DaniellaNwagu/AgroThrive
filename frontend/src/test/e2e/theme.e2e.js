@@ -24,7 +24,6 @@ import {
   THEME_STORAGE_KEY,
   readDataTheme,
   readStoredTheme,
-  writeUser,
 } from './themeHelpers.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,7 +31,6 @@ import {
 /** Inject a fake authenticated user so the navbar shows auth controls. */
 async function injectUser(page, role = 'buyer') {
   await page.addInitScript((r) => {
-    // eslint-disable-next-line no-undef
     window.__themeHelpers.writeUser(localStorage, r);
   }, role);
 }

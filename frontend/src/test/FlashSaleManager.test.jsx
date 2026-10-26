@@ -1,12 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import FlashSaleManager from '../../components/dashboard/FlashSaleManager';
-import { api } from '../../api/client';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { beforeEach, vi } from 'vitest';
+import FlashSaleManager from '../components/dashboard/FlashSaleManager';
+import { api } from '../api/client';
 
-jest.mock('../../api/client', () => ({
+vi.mock('../api/client', () => ({
   api: {
-    setFlashSale: jest.fn(),
-    cancelFlashSale: jest.fn(),
+    setFlashSale: vi.fn(),
+    cancelFlashSale: vi.fn(),
   },
 }));
 
@@ -28,28 +29,28 @@ function pastDateTime() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 // ── #1031 — Cancel confirmation dialog ───────────────────────────────────────
 
 describe('FlashSaleManager — cancel confirmation (#1031)', () => {
   it('does not call api.cancelFlashSale immediately on cancel click', () => {
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(api.cancelFlashSale).not.toHaveBeenCalled();
   });
 
   it('shows a confirmation dialog mentioning the product name after cancel click', () => {
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(/apples/i)).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByText(/apples/i)).toBeInTheDocument();
   });
 
   it('calls api.cancelFlashSale after confirming in the dialog', async () => {
     api.cancelFlashSale.mockResolvedValue({});
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /yes, cancel sale/i }));
@@ -58,7 +59,7 @@ describe('FlashSaleManager — cancel confirmation (#1031)', () => {
   });
 
   it('does NOT call api.cancelFlashSale if the user dismisses the confirmation', async () => {
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     fireEvent.click(screen.getByRole('button', { name: /keep sale/i }));
     expect(api.cancelFlashSale).not.toHaveBeenCalled();
@@ -79,7 +80,7 @@ describe('FlashSaleManager — future date validation (#1032)', () => {
   }
 
   it('does not call api.setFlashSale and shows an error for a past end time', async () => {
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fillForm(pastDateTime());
     await act(async () => {
       fireEvent.submit(screen.getByRole('button', { name: /set flash sale/i }).closest('form'));
@@ -91,7 +92,7 @@ describe('FlashSaleManager — future date validation (#1032)', () => {
 
   it('calls api.setFlashSale when end time is in the future', async () => {
     api.setFlashSale.mockResolvedValue({ data: { id: 2 } });
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fillForm(futureDateTime());
     await act(async () => {
       fireEvent.submit(screen.getByRole('button', { name: /set flash sale/i }).closest('form'));
@@ -102,7 +103,7 @@ describe('FlashSaleManager — future date validation (#1032)', () => {
   });
 
   it('clears the error message when the user corrects the end time', async () => {
-    render(<FlashSaleManager products={PRODUCTS} onChanged={jest.fn()} />);
+    render(<FlashSaleManager products={PRODUCTS} onChanged={vi.fn()} />);
     fillForm(pastDateTime());
     await act(async () => {
       fireEvent.submit(screen.getByRole('button', { name: /set flash sale/i }).closest('form'));

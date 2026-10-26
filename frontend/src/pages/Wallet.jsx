@@ -8,7 +8,6 @@ import { getStellarErrorMessage } from '../utils/stellarErrors';
 import { getErrorMessage } from '../utils/errorMessages';
 import { showToast } from '../utils/toast';
 import { useConfirm } from '../hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
 import StreamAccrual from '../components/StreamAccrual';
 import { useXlmRate } from '../utils/useXlmRate';
 import { useNetwork } from '../context/NetworkContext';
@@ -78,7 +77,6 @@ function Toast({ toasts, usd }) {
 }
 
 export default function Wallet() {
-  const { t } = useTranslation();
   const { confirm, confirmDialog } = useConfirm();
   const { user } = useAuth();
   const { network, explorerUrl } = useNetwork();
@@ -118,6 +116,7 @@ export default function Wallet() {
   const [streams, setStreams] = useState([]);
   const [streamsMsg, setStreamsMsg] = useState(null);
   const [streamActionId, setStreamActionId] = useState(null);
+  const [streamRateInputs, setStreamRateInputs] = useState({});
 
   const esRef = useRef(null);
   const reconnectTimer = useRef(null);
@@ -193,10 +192,12 @@ export default function Wallet() {
           } else {
             load();
           }
-          api.getTransactions().then(t => setTxs(t.data ?? t)).catch(() => {});
+          api.getTransactions().then(t => setTxs(t.data ?? t)).catch(() => setLoadError('Unable to refresh transactions.'));
           addToast({ amount: payload.amount, from: payload.from });
         }
-      } catch {}
+      } catch {
+        return;
+      }
     };
     es.addEventListener('error', () => {
       es.close();
@@ -235,7 +236,7 @@ export default function Wallet() {
       clearTimeout(reconnectTimer.current);
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
     };
-  }, [load, loadStreams, connectStream]);
+  }, [load, loadStreams, connectStream, user?.role]);
 
   async function handleFund() {
     setFunding(true);
@@ -352,11 +353,9 @@ export default function Wallet() {
     }
   }
 
-  async function handleDecreaseStreamRate(id, currentRate) {
-    const input = prompt('New rate per second (must be lower than current rate):', currentRate);
-    if (input == null) return;
-    const rate = parseFloat(input);
-    if (!rate || rate <= 0 || rate >= currentRate) {
+  async function handleDecreaseStreamRate(id, currentRate, input) {
+    const rate = Number.parseFloat(input);
+    if (!Number.isFinite(rate) || rate <= 0 || rate >= currentRate) {
       setStreamsMsg({ type: 'err', text: 'New rate must be a positive number lower than the current rate.' });
       return;
     }
@@ -887,7 +886,18 @@ export default function Wallet() {
                 <div style={{ flexShrink: 0, marginLeft: 12, display: 'flex', gap: 8 }}>
                   {isSender ? (
                     <>
-                      <button style={s.btnOutline} disabled={streamActionId === stream.id} onClick={() => handleDecreaseStreamRate(stream.id, stream.rate)}>
+                      <input
+                        type="number"
+                        min="0"
+                        max={Number(stream.rate)}
+                        step="any"
+                        aria-label={`New rate for stream ${stream.id}`}
+                        placeholder="New rate"
+                        value={streamRateInputs[stream.id] || ''}
+                        onChange={(event) => setStreamRateInputs((current) => ({ ...current, [stream.id]: event.target.value }))}
+                        style={{ width: 100, padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4 }}
+                      />
+                      <button style={s.btnOutline} disabled={streamActionId === stream.id} onClick={() => handleDecreaseStreamRate(stream.id, Number(stream.rate), streamRateInputs[stream.id])}>
                         Decrease rate
                       </button>
                       <button style={s.btnDanger} disabled={streamActionId === stream.id} onClick={() => handleCancelStream(stream.id)}>

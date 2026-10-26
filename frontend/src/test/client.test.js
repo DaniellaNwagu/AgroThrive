@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { api, setAccessToken, clearAccessToken, setLogoutCallback, setLoadingCallback } from '../api/client';
 
-const BASE = '/api';
+const BASE = '/api/v1';
 
 describe('api/client.js (#442)', () => {
   let logoutCallback;
 
   beforeEach(() => {
     logoutCallback = vi.fn();
+    document.cookie = 'csrf_token=test-csrf-token; path=/';
+    setAccessToken(null);
     setLogoutCallback(logoutCallback);
     setLoadingCallback(null);
     clearAccessToken();
@@ -44,9 +46,9 @@ describe('api/client.js (#442)', () => {
     const result = await api.getProducts();
     expect(result).toEqual({ success: true, data: 'test' });
     expect(callLog).toEqual([
-      '/api/products',
-      '/api/auth/refresh',
-      '/api/products',
+      '/api/v1/products',
+      '/api/v1/auth/refresh',
+      '/api/v1/products',
     ]);
     expect(logoutCallback).not.toHaveBeenCalled();
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Test that navigating to page 2 fetches the correct offset from the API
 describe('AdminDashboard orders pagination (#436)', () => {

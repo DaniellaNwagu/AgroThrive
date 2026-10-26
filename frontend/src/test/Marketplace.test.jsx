@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import SkeletonProductCard from '../../components/SkeletonProductCard';
+import { render } from '@testing-library/react';
+import SkeletonProductCard from '../components/SkeletonProductCard';
 
 const PAGE_SIZE = 20;
 
@@ -18,8 +18,8 @@ describe('SkeletonProductCard', () => {
   it('shimmer style tag is injected into document head only once for multiple cards', () => {
     render(
       <>
-        {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-          <SkeletonProductCard key={i} />
+        {Array.from({ length: PAGE_SIZE }, (_, i) => `skeleton-${i}`).map((key) => (
+          <SkeletonProductCard key={key} />
         ))}
       </>
     );
@@ -30,8 +30,8 @@ describe('SkeletonProductCard', () => {
   it(`renders exactly PAGE_SIZE (${PAGE_SIZE}) skeletons in a grid`, () => {
     const { container } = render(
       <div role="grid">
-        {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-          <SkeletonProductCard key={i} />
+        {Array.from({ length: PAGE_SIZE }, (_, i) => `skeleton-${i}`).map((key) => (
+          <SkeletonProductCard key={key} />
         ))}
       </div>
     );

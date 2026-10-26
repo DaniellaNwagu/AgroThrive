@@ -281,7 +281,7 @@ function SettingsAccountBody({ showToast }) {
       <div style={{ ...s.card, border: '1px solid #ffc107' }}>
         <div style={s.section}>Wallet Consolidation</div>
         <div style={s.desc}>
-          Merge this account's Stellar wallet into another address. All XLM will be transferred and the source account will be permanently closed on the ledger. This action is irreversible.
+          Merge this account&apos;s Stellar wallet into another address. All XLM will be transferred and the source account will be permanently closed on the ledger. This action is irreversible.
         </div>
         <button style={{ ...s.btnDanger, background: '#e67e22' }} onClick={openMergeModal}>
           Merge Wallet

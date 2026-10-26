@@ -71,11 +71,12 @@ export default function OrderManagementPanel({
 }) {
   const { t } = useTranslation();
   const [returnActions, setReturnActions] = useState(new Set());
+  const [returnReasons, setReturnReasons] = useState({});
 
-  function handleReturnAction(action, orderId) {
+  function handleReturnAction(action, orderId, reason) {
     if (returnActions.has(orderId)) return;
     setReturnActions((current) => new Set(current).add(orderId));
-    action?.(orderId);
+    action?.(orderId, reason);
   }
 
   return (
@@ -196,6 +197,15 @@ export default function OrderManagementPanel({
                         ↩️ Return requested
                       </div>
                       <div style={{ color: '#555', marginBottom: 8 }}>{o.return_reason}</div>
+                      <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>
+                        Rejection reason (optional)
+                        <input
+                          type="text"
+                          value={returnReasons[o.id] || ''}
+                          onChange={(event) => setReturnReasons((current) => ({ ...current, [o.id]: event.target.value }))}
+                          style={{ display: 'block', width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4 }}
+                        />
+                      </label>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           style={{
@@ -225,7 +235,7 @@ export default function OrderManagementPanel({
                             fontSize: 12,
                           }}
                           disabled={returnActions.has(o.id)}
-                          onClick={() => handleReturnAction(onRejectReturn, o.id)}
+                          onClick={() => handleReturnAction(onRejectReturn, o.id, returnReasons[o.id] || '')}
                         >
                           ❌ Reject
                         </button>

@@ -6,7 +6,6 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 // Bundle size budgets (kB, uncompressed).
 // Raise these deliberately and document the reason — do not bump silently.
 const INITIAL_CHUNK_BUDGET_KB = 500;   // vendor + index combined initial load
-const TOTAL_BUNDLE_BUDGET_KB  = 5000;  // whole dist/assets directory
 
 // Vite's `define` only rewrites modules it bundles. Files in `public/` are
 // copied verbatim, so `self.__APP_VERSION__` inside `public/sw.js` would stay

@@ -12,17 +12,16 @@ const s = {
 
 /**
  * Offset-based pagination controls.
- * Props: page, totalPages, total, limit, onChange(newPage)
+ * Props: page, totalPages, total, onChange(newPage)
  */
-export default function Pagination({ page, totalPages, total, limit, onChange }) {
+export default function Pagination({ page, totalPages, total, onChange }) {
   const containerRef = useRef(null);
   const { t } = useTranslation();
-
-  if (!totalPages || totalPages <= 1) return null;
+  const hasPages = Boolean(totalPages && totalPages > 1);
 
   // Clamp page to a valid range so stale props don't render out-of-range buttons
-  const safePage = Math.max(1, Math.min(page, totalPages));
-  const pages = buildPageList(safePage, totalPages);
+  const safePage = Math.max(1, Math.min(page, totalPages || 1));
+  const pages = hasPages ? buildPageList(safePage, totalPages) : [];
 
   const goPrev = useCallback(() => {
     if (safePage > 1) onChange(safePage - 1);
@@ -49,6 +48,8 @@ export default function Pagination({ page, totalPages, total, limit, onChange })
     el.addEventListener('keydown', handleKeyDown);
     return () => el.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  if (!hasPages) return null;
 
   return (
     <nav aria-label="Pagination" ref={containerRef}>

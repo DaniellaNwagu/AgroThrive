@@ -51,7 +51,7 @@ export default function AuctionCard({ auction: initialAuction, onBid }) {
       try {
         const res = await api.getAuction(auction.id);
         const fresh = res.data ?? res;
-        setAuction(prev => {
+        setAuction(() => {
           // Keep optimistic bid if it's higher than server data
           if (optimisticBid.current && optimisticBid.current > (fresh.current_bid ?? fresh.start_price)) {
             return { ...fresh, current_bid: optimisticBid.current };
@@ -59,7 +59,9 @@ export default function AuctionCard({ auction: initialAuction, onBid }) {
           optimisticBid.current = null;
           return fresh;
         });
-      } catch {}
+      } catch {
+        setMsg({ ok: false, text: 'Unable to refresh auction. Retrying shortly.' });
+      }
     }, 5000);
     return () => clearInterval(id);
   }, [auction.id, auction.status]);
