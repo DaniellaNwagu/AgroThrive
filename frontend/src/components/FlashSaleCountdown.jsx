@@ -32,17 +32,19 @@ function getRemaining(endAt) {
 export default function FlashSaleCountdown({ endsAt }) {
   const [remaining, setRemaining] = useState(() => getRemaining(endsAt));
   const announcedRef = useRef(false);
+  const isExpired = remaining.diff <= 0;
+  const isFastCountdown = remaining.totalSeconds < 10;
 
   useEffect(() => {
-    if (remaining.diff <= 0) return;
-    const tick = remaining.totalSeconds < 10 ? 250 : 1000;
+    if (isExpired) return;
+    const tick = isFastCountdown ? 250 : 1000;
     const timer = setInterval(() => {
       const next = getRemaining(endsAt);
       setRemaining(next);
       if (next.diff <= 0) clearInterval(timer);
     }, tick);
     return () => clearInterval(timer);
-  }, [endsAt, remaining.totalSeconds < 10]);
+  }, [endsAt, isExpired, isFastCountdown]);
 
   // Announce at 10 seconds once
   const shouldAnnounce = remaining.totalSeconds <= 10 && remaining.diff > 0 && !announcedRef.current;

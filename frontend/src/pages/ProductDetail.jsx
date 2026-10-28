@@ -132,16 +132,12 @@ export default function ProductDetail() {
   const [weight, setWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [confirming, setConfirming] = useState(null); // { orderId, startedAt }
-   const [progress, setProgress] = useState(0);
    const [error, setError] = useState('');
    const { usd } = useXlmRate();
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [isOutOfDeliveryZone, setIsOutOfDeliveryZone] = useState(false);
   const [useEscrow, setUseEscrow] = useState(false);
-  const [alertSet, setAlertSet] = useState(false);
-  const [alertLoading, setAlertLoading] = useState(false);
   const [images, setImages] = useState([]);
    const [activeImg, setActiveImg] = useState(0);
    const [paidOrders, setPaidOrders] = useState([]);
@@ -151,7 +147,6 @@ export default function ProductDetail() {
   const [waitlistPosition, setWaitlistPosition] = useState(null);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [waitlistError, setWaitlistError] = useState('');
-  const [buyerLocation, setBuyerLocation] = useState(null);
   const [distanceLabel, setDistanceLabel] = useState('');
   const [distanceLoading, setDistanceLoading] = useState(false);
   const [distanceError, setDistanceError] = useState('');
@@ -197,7 +192,6 @@ export default function ProductDetail() {
       (pos) => {
         const location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         cacheBuyerLocation(location);
-        setBuyerLocation(location);
         updateDistance(location, product);
         setDistanceLoading(false);
       },
@@ -296,7 +290,7 @@ export default function ProductDetail() {
    const review = useReviewForm(id, { onSuccess: handleReviewSuccess });
    const { setReviewOrderId } = review;
 
-   const { paymentLinkData, paymentLinkLoading, paymentLinkError, generatePaymentLink, setPaymentLinkError } = usePaymentLink();
+  const { paymentLinkData, paymentLinkLoading, paymentLinkError, generatePaymentLink, setPaymentLinkData, setPaymentLinkError } = usePaymentLink();
 
    useEffect(() => {
     api.getProduct(id).then(res => {
@@ -338,21 +332,15 @@ export default function ProductDetail() {
     if (!product) return;
     const cached = loadBuyerLocation();
     if (cached) {
-      setBuyerLocation(cached);
       updateDistance(cached, product);
     }
   }, [product]);
 
   useEffect(() => {
-    if (user?.role !== 'buyer') return;
-    api.getMyAlert(id).then(res => setAlertSet(res.subscribed)).catch(() => {});
-  }, [id, user]);
-
-  useEffect(() => {
     if (product) {
       addRecentlyViewed(product);
     }
-  }, [product?.id]);
+  }, [product]);
 
   useEffect(() => {
     if (user?.role !== 'buyer') return;
@@ -408,7 +396,7 @@ export default function ProductDetail() {
       addressId: selectedAddressId,
       couponCode: couponResult ? couponCode : undefined
     });
-  }, [user, navigate, addresses.length, selectedAddressId, generatePaymentLink, product, qty, couponResult, couponCode, t]);
+  }, [user, navigate, addresses.length, selectedAddressId, generatePaymentLink, setPaymentLinkError, product, qty, couponResult, couponCode, t]);
 
   // Compute total for fee preview (safe to call before product loads)
   const _previewTotal = product
@@ -431,7 +419,7 @@ export default function ProductDetail() {
     const n = parseFloat(_previewTotal);
     if (!n) return;
     api.getFeePreview(n).then(r => setFeeInfo(r)).catch(() => setFeeInfo(null));
-  }, [_previewTotal]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [_previewTotal]);
   // SSE: connect to stock-stream for real-time stock updates
   useEffect(() => {
     mountedRef.current = true;
@@ -486,7 +474,7 @@ export default function ProductDetail() {
 
   // Load auction details if product is auction
   useEffect(() => {
-    if (!product || !product.type || product.type !== 'auction') return;
+    if (product?.type !== 'auction') return;
     api.getAuction(product.id).then(res => {
       setAuctionData(res.data ?? res);
     }).catch(() => setAuctionData(null));
@@ -494,7 +482,7 @@ export default function ProductDetail() {
 
   // Countdown timer for auction
   useEffect(() => {
-    if (!auctionData || !auctionData.auction_end) return;
+    if (!auctionData?.auction_end) return;
     const tick = () => {
       const now = Date.now();
       const end = new Date(auctionData.auction_end).getTime();
@@ -513,7 +501,7 @@ export default function ProductDetail() {
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [auctionData?.auction_end]);
+  }, [auctionData]);
 
   if (!product) return <Spinner />;
 
@@ -552,20 +540,6 @@ export default function ProductDetail() {
       ? (product.price * (parseFloat(weight) || 0)).toFixed(2)
       : (effectiveUnitPrice * qty).toFixed(2);
     const total = couponResult ? couponResult.final_total.toFixed(2) : subtotal;
-
-  async function handleAlert() {
-    setAlertLoading(true);
-    try {
-      if (alertSet) {
-        await api.removeStockAlert(id);
-        setAlertSet(false);
-      } else {
-        await api.setStockAlert(id);
-        setAlertSet(true);
-      }
-    } catch { /* ignore */ }
-    setAlertLoading(false);
-  }
 
   async function handleJoinWaitlist() {
     if (!user) return navigate('/login');
@@ -721,7 +695,9 @@ export default function ProductDetail() {
               walletPollingTimeoutRef.current = null;
             }
           }
-        } catch {}
+        } catch {
+          if (mountedRef.current) setError('Unable to check payment status. Retrying.');
+        }
       }, 5000);
       walletPollingIntervalRef.current = interval;
       walletPollingTimeoutRef.current = setTimeout(() => {
@@ -817,21 +793,6 @@ export default function ProductDetail() {
           <button style={{ ...s.btn, marginTop: 20, background: '#555' }} onClick={() => navigate('/marketplace')}>
             {t('productDetail.backToMarketplace')}
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (confirming) {
-    return (
-      <div style={s.page}>
-        <div style={s.card}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-          <div style={s.confirming}>
-            <strong>Confirming payment...</strong>
-            <p style={{ marginTop: 8, fontSize: 14 }}>Waiting for Stellar network confirmation. This usually takes a few seconds.</p>
-            <div style={s.bar}><div style={{ ...s.barFill, width: `${progress}%` }} /></div>
-          </div>
         </div>
       </div>
     );
@@ -1161,7 +1122,7 @@ export default function ProductDetail() {
         {/* Allergen badges */}
         {(() => {
           let allergens = [];
-          try { allergens = product.allergens ? JSON.parse(product.allergens) : []; } catch {}
+          try { allergens = product.allergens ? JSON.parse(product.allergens) : []; } catch { allergens = []; }
           return (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Allergens</div>
@@ -1384,7 +1345,7 @@ export default function ProductDetail() {
         {/* Region restriction notice */}
         {(() => {
           let regions = [];
-          try { regions = product.allowed_regions ? JSON.parse(product.allowed_regions) : []; } catch {}
+          try { regions = product.allowed_regions ? JSON.parse(product.allowed_regions) : []; } catch { regions = []; }
           if (!regions.length) return null;
           return (
             <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff8e1', border: '1px solid #f9a825', borderRadius: 8, fontSize: 13, color: '#5d4037' }}>
@@ -1502,7 +1463,7 @@ export default function ProductDetail() {
               <>
                 {isOnWaitlist ? (
                   <>
-                    {waitlistPosition && <div style={{ fontSize: 14, color: '#2d6a4f', marginBottom: 12 }}>You're #{waitlistPosition} on the waitlist</div>}
+                    {waitlistPosition && <div style={{ fontSize: 14, color: '#2d6a4f', marginBottom: 12 }}>You&apos;re #{waitlistPosition} on the waitlist</div>}
                     <button style={{ ...s.btn, background: '#888', marginBottom: 8 }} onClick={handleLeaveWaitlist} disabled={waitlistLoading}>
                       {waitlistLoading ? '...' : 'Leave Waitlist'}
                     </button>
@@ -1610,6 +1571,18 @@ export default function ProductDetail() {
          )}
          {review.reviewSuccess && <div style={{ ...s.success, marginTop: 16 }}>{review.reviewSuccess}</div>}
       </div>
+      {walletPaymentOpen && (
+        <div role="dialog" aria-modal="true" aria-label="Wallet payment" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 24, maxWidth: 360, width: '90%', textAlign: 'center' }}>
+            <h2 style={{ marginTop: 0 }}>Complete wallet payment</h2>
+            <p>Order #{walletOrderId}</p>
+            <QRCode value={paymentLink} size={200} />
+            <CopyButton url={paymentLink} />
+            <p role="status">Payment status: {walletStatus}</p>
+            <button type="button" onClick={() => setWalletPaymentOpen(false)} aria-label="Close wallet payment">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

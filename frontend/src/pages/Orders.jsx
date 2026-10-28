@@ -247,7 +247,7 @@ export default function Orders() {
         clearTimeout(reconnectTimerRef.current);
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleClaim(orderId) {
     setClaimingId(orderId);

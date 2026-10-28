@@ -3,7 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 vi.mock('react-router-dom', () => ({
-  NavLink: ({ children, to, ...props }) => <a href={to} {...props}>{children}</a>,
+  NavLink: ({ children, to, style, ...props }) => (
+    <a href={to} style={typeof style === 'function' ? style({ isActive: false }) : style} {...props}>
+      {children}
+    </a>
+  ),
   useNavigate: () => vi.fn(),
 }));
 
@@ -43,7 +47,7 @@ describe('Navbar lang attribute update (#1066)', () => {
   });
 
   it('updates document.documentElement.lang when language is switched via Navbar', () => {
-    const { container } = render(<Navbar />);
+    render(<Navbar />);
 
     // Initial lang should be set
     expect(document.documentElement.getAttribute('lang')).toBe('en');

@@ -126,8 +126,6 @@ describe('AnnouncementBanner session persistence (#780)', () => {
 
   it('gracefully handles unavailable sessionStorage', async () => {
     // Simulate sessionStorage being unavailable
-    const originalGetItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'getItem');
-    const originalSetItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem');
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('unavailable'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('unavailable'); });
 

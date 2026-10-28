@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useConfirm } from '../hooks/useConfirm';
@@ -264,7 +264,7 @@ export default function AdminDashboard() {
   const [alertsFilter, setAlertsFilter] = useState('unacknowledged');
   const [alertsLoading, setAlertsLoading] = useState(false);
 
-  async function loadContractAlerts(filter = alertsFilter) {
+  const loadContractAlerts = useCallback(async (filter = alertsFilter) => {
     setAlertsLoading(true);
     try {
       const acknowledged = filter === 'all' ? undefined : filter === 'acknowledged' ? true : false;
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
       console.error(e);
     }
     finally { setAlertsLoading(false); }
-  }
+  }, [alertsFilter]);
 
   async function acknowledgeAlert(id) {
     await api.adminAcknowledgeContractAlert(id);
@@ -290,7 +290,8 @@ export default function AdminDashboard() {
   const [invocError, setInvocError] = useState('');
 
   async function loadDisputes() {
-    try { const res = await api.adminGetDisputes(); setDisputes(res.data ?? res); } catch {}
+    try { const res = await api.adminGetDisputes(); setDisputes(res.data ?? res); }
+    catch (e) { setError(e.message); }
   }
 
   async function loadStats() {
@@ -300,42 +301,42 @@ export default function AdminDashboard() {
     } catch (e) { setError(e.message); }
   }
 
-  async function loadUsers(page = 1) {
+  const loadUsers = useCallback(async (page = 1) => {
     try {
       const res = await api.adminGetUsers(page, { search: searchQuery, role: roleFilter, verified: verifiedFilter, banned: bannedFilter });
       setUsers(res.data);
       setPagination(res.pagination);
       setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('usersPage', page); return p; });
     } catch (e) { setError(e.message); }
-  }
+  }, [searchQuery, roleFilter, verifiedFilter, bannedFilter, setSearchParams]);
 
-  async function loadOrders(page = 1) {
+  const loadOrders = useCallback(async (page = 1) => {
     try {
       const res = await api.adminGetOrders(page);
       setOrders(res.data);
       setOrderPagination(res.pagination);
       setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('ordersPage', page); return p; });
     } catch (e) { setError(e.message); }
-  }
+  }, [setSearchParams]);
 
+  const loadContracts = useCallback(async (filters = contractFilter) => {
+    try {
+      const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
+      const res = await api.adminGetContracts(params ? `?${params}` : '');
+      setContracts(res.data ?? []);
+    } catch (e) { setContractMsg(e.message); }
+  }, [contractFilter]);
+
+  const usersPage = parseInt(searchParams.get('usersPage') || '1');
+  const ordersPage = parseInt(searchParams.get('ordersPage') || '1');
   useEffect(() => {
-    const usersPage = parseInt(searchParams.get('usersPage') || '1');
-    const ordersPage = parseInt(searchParams.get('ordersPage') || '1');
     loadStats();
     loadUsers(usersPage);
     loadOrders(ordersPage);
     loadContracts();
     loadContractAlerts('unacknowledged');
     loadDisputes();
-  }, []);
-
-    async function loadContracts(filters = contractFilter) {
-    try {
-      const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
-      const res = await api.adminGetContracts(params ? `?${params}` : '');
-      setContracts(res.data ?? []);
-    } catch (e) { setContractMsg(e.message); }
-  }
+  }, [usersPage, ordersPage, loadUsers, loadOrders, loadContracts, loadContractAlerts]);
 
   async function handleRegisterContract(e) {
     e.preventDefault();
